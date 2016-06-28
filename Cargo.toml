@@ -1,0 +1,7 @@
+[package]
+name = "dirt"
+version = "0.1.0"
+authors = ["isra17 <isra017@gmail.com>"]
+
+[dependencies]
+elf = { git = "https://github.com/philipc/rust-elf.git", rev = "d957556a49b8dc06ff206ba2b2c2a040f040d782" }

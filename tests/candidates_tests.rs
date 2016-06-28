@@ -12,7 +12,8 @@ fn tests_all_candidates() {
     for path in filepaths {
         let candidate = bin_file::load(path.unwrap().path().as_path()).unwrap();
 
-        let tests_iter = candidate.objects().into_iter()
+        let tests_iter = candidate.objects()
+            .into_iter()
             .filter(|o| o.name.starts_with("test_"))
             .map(|o| candidate.read_str(o.value));
 
@@ -20,8 +21,9 @@ fn tests_all_candidates() {
         // against the DIRT engine.
         for test in tests_iter {
             let fn_name = test.unwrap();
-            //println!("{}", fn_name);
-            println!("{}: 0x{:x}", fn_name, candidate.get_symbol(fn_name.as_str()).unwrap().value);
+            println!("{}: 0x{:x}",
+                     fn_name,
+                     candidate.get_symbol(fn_name.as_str()).unwrap().value);
         }
     }
 }

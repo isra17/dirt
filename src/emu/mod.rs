@@ -1,4 +1,5 @@
 pub mod emu_engine;
+pub mod vmstate;
 
 use std::path::Path;
 

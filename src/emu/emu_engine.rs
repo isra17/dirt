@@ -1,7 +1,9 @@
+use std::rc::Rc;
 use unicorn;
 use unicorn::CpuX86;
 
 use dirt_engine::TargetInfo;
+use emu::vmstate::VmState;
 
 pub enum EmuError {
     UnicornError,
@@ -16,14 +18,18 @@ pub struct EmuArgs {
 }
 
 pub struct EmuEngine {
-    pub uc: CpuX86,
+    pub uc: Rc<unicorn::CpuX86>,
+    vmstate: VmState,
 }
 
 impl EmuEngine {
     pub fn new() -> EmuEngine {
-        let uc = CpuX86::new(unicorn::Mode::MODE_32)
-            .expect("failed to instantiate emulator");
-        return EmuEngine { uc: uc };
+        let uc = Rc::new(CpuX86::new(unicorn::Mode::MODE_32)
+            .expect("failed to create emulator"));
+        return EmuEngine {
+            uc: uc.clone(),
+            vmstate: VmState::new(uc.clone()),
+        };
     }
 
     pub fn call(&self,

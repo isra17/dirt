@@ -1,16 +1,27 @@
-extern crate unicorn;
-
+use utils::LogError;
 use emu::loader::Error;
 use emu::vmstate::VmState;
 use elf;
 use std::fs::File;
 use std::io;
 use std::path::Path;
+use unicorn;
+
+/// Align a memory size.
+fn aligned_size(size: usize, page_size: usize) -> usize {
+    return (size / page_size + 1) * page_size;
+}
+
+/// Align a memory address.
+fn aligned_addr(addr: u64, page_size: u64) -> u64 {
+    return (addr / page_size) * page_size;
+}
 
 /// Convert ::elf::types::ProgFlag to ::unicorn::Permission.
 fn prot_from_elf_flags(flag: elf::types::ProgFlag)
                        -> unicorn::unicorn_const::Protection {
-    return unicorn::unicorn_const::Protection::from_bits(flag.0).unwrap();
+    return unicorn::unicorn_const::Protection::from_bits(flag.0)
+        .expect("Cannot convert ELF flags to unicorn Protection");
 }
 
 struct Arch(unicorn::unicorn_const::Arch, unicorn::unicorn_const::Mode);
@@ -43,15 +54,28 @@ pub fn load(path: &Path) -> Result<VmState, Error> {
     let loadable_segments =
         elf_file.phdrs.iter().filter(|s| s.progtype == elf::types::PT_LOAD);
     for phdr in loadable_segments {
-        try!(emu.mem_map(phdr.vaddr,
-                         phdr.memsz as usize,
-                         prot_from_elf_flags(phdr.flags)));
+        let page_addr = aligned_addr(phdr.vaddr, 0x1000);
+        let offset = (phdr.vaddr - page_addr) as usize;
+        let page_size = aligned_size(phdr.memsz as usize + offset, 0x1000);
+        let flags = prot_from_elf_flags(phdr.flags);
+        try!(emu.mem_map(page_addr, page_size, flags)
+            .log_err(|_| format!("Failed to map segment: {:?}", phdr)));
 
-        try!(file_stream.seek(io::SeekFrom::Start(phdr.offset)));
+        try!(file_stream.seek(io::SeekFrom::Start(phdr.offset))
+            .log_err(|_| {
+                format!("Failed to seek to segment offset: {:?}", phdr)
+            }));
+
         let mut data_buf = Vec::with_capacity(phdr.filesz as usize);
-        try!(file_stream.read_exact(data_buf.as_mut_slice()));
+        try!(file_stream.read_exact(data_buf.as_mut_slice())
+            .log_err(|_| {
+                format!("Failed to read segment content: {:?}", phdr)
+            }));
 
-        try!(emu.mem_write(phdr.vaddr, data_buf.as_slice()));
+        try!(emu.mem_write(phdr.vaddr, data_buf.as_slice())
+            .log_err(|_| {
+                format!("Failed to write segment to emulator: {:?}", phdr)
+            }));
     }
 
     let vmstate = VmState::new(::std::rc::Rc::new(emu));

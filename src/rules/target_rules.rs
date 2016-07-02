@@ -1,7 +1,6 @@
-use emu::datatypes::DataType;
 use emu::emu_engine::EmuEffects;
 use emu::vmstate::VmState;
-use emu::args::{EmuArgs, PushableArgs};
+use emu::args::EmuArgs;
 
 pub trait RuleVerifier {
     fn verify(&self, effects: &EmuEffects, vmstate: &VmState) -> bool;

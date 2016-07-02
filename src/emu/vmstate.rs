@@ -85,11 +85,6 @@ impl VmState {
     }
 
     pub fn read_str(&self, addr: u64) -> Result<String, Error> {
-        let mut addr_it = addr;
-        loop {
-            addr_it += 1;
-            break;
-        }
         return Err(Error::NotImplemented);
     }
 

@@ -1,7 +1,7 @@
 pub mod ruleset;
 pub mod target_rules;
 
-use emu::args::{EmuArgs, PushableArgs};
+use emu::args::EmuArgs;
 use emu::emu_engine::EmuEffects;
 use emu::vmstate::VmState;
 use self::target_rules::{RuleVerifier, TargetRules};

@@ -1,8 +1,7 @@
 use dirt_engine::TargetInfo;
 use emu::Error;
 use emu::args::{EmuArgs, PushableArgs};
-use emu::vmstate::{DataWriter, VmState};
-use emu::datatypes::DataType;
+use emu::vmstate::VmState;
 
 pub struct EmuEffects {
     pub return_value: u64,
@@ -21,8 +20,10 @@ impl EmuEngine {
     pub fn new(vmstate: VmState) -> EmuEngine {
         // Code sentinel used to trap function return.
         vmstate.engine
-            .mem_map(CODE_SENTINEL, 1, ::unicorn::unicorn_const::PROT_EXEC)
-            .unwrap();
+            .mem_map(CODE_SENTINEL,
+                     0x1000,
+                     ::unicorn::unicorn_const::PROT_EXEC)
+            .expect("Failed to map code sentinel");
         return EmuEngine { vmstate: vmstate };
     }
 

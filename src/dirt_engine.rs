@@ -50,10 +50,11 @@ impl DirtEngine {
             // emulated and run the unknown function. Check with the rule if the
             // result match its conditions.
             for input_args in &candidate_rule.inputs {
-                let target_match = match self.emu.call(target, input_args) {
-                    Ok(call_effects) => candidate_rule.verify(input_args, call_effects, &self.emu.vmstate),
-                    Err(_) => false,
-                };
+                let target_match =
+                    match self.emu.call(target, input_args) {
+                        Ok(call_effects) => candidate_rule.verify(&call_effects, &self.emu.vmstate),
+                        Err(_) => false,
+                    };
 
                 if !target_match {
                     break;

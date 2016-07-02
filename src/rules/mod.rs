@@ -1,23 +1,22 @@
 pub mod ruleset;
 pub mod target_rules;
 
+use emu::args::{EmuArgs, PushableArgs};
 use emu::emu_engine::EmuEffects;
 use emu::vmstate::VmState;
 use self::target_rules::{RuleVerifier, TargetRules};
+use std::rc::Rc;
 
 struct StrcmpRule;
 impl RuleVerifier for StrcmpRule {
-    fn verify(&self,
-              args: &[u64],
-              effects: EmuEffects,
-              vmstate: &VmState)
-              -> bool {
-        let a = match vmstate.read_str(args[0]) {
+    fn verify(&self, effects: &EmuEffects, vmstate: &VmState) -> bool {
+        let pushed_args = effects.args.pushed_args();
+        let a = match vmstate.read_str(pushed_args[0]) {
             Ok(x) => x,
             Err(_) => return false,
         };
 
-        let b = match vmstate.read_str(args[1]) {
+        let b = match vmstate.read_str(pushed_args[1]) {
             Ok(x) => x,
             Err(_) => return false,
         };
@@ -31,7 +30,11 @@ impl RuleVerifier for StrcmpRule {
 }
 
 pub fn fixtures() -> ruleset::RuleSet {
-    let inputs = vec![vec![0, 0], vec![0x90000000, 0]];
+    use emu::datatypes::StringData;
+    let inputs = vec![EmuArgs::new(vec![Rc::new(StringData::new("a")),
+                                        Rc::new(StringData::new("a"))]),
+                      EmuArgs::new(vec![Rc::new(StringData::new("a")),
+                                        Rc::new(StringData::new("b"))])];
 
     let strcmp_rules = TargetRules {
         inputs: inputs,

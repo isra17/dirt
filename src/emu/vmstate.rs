@@ -1,7 +1,8 @@
+use emu::Error;
+use emu::args::PushableArgs;
+use emu::emu_engine::EmuEffects;
 use std::rc::Rc;
 use unicorn;
-use emu::emu_engine::EmuEffects;
-use emu::Error;
 use unicorn::x86_const::RegisterX86 as RegEnum;
 
 pub struct VmState {
@@ -73,9 +74,14 @@ impl VmState {
         return Ok(());
     }
 
-    pub fn collect_call_results(&self) -> Result<EmuEffects, Error> {
+    pub fn collect_call_results(&self,
+                                args: PushableArgs)
+                                -> Result<EmuEffects, Error> {
         let return_value = try!(self.return_value());
-        return Ok(EmuEffects { return_value: return_value });
+        return Ok(EmuEffects {
+            return_value: return_value,
+            args: args,
+        });
     }
 
     pub fn read_str(&self, addr: u64) -> Result<String, Error> {
@@ -84,6 +90,10 @@ impl VmState {
             addr_it += 1;
             break;
         }
+        return Err(Error::NotImplemented);
+    }
+
+    pub fn write_str(&self, addr: u64, data: &str) -> Result<u64, Error> {
         return Err(Error::NotImplemented);
     }
 
@@ -104,7 +114,9 @@ impl<'a> DataWriter<'a> {
         };
     }
 
-    pub fn write_str(&self, data: &str) -> u64 {
-        return self.write_ptr;
+    pub fn write_str(&mut self, data: &str) -> Result<u64, Error> {
+        let str_ptr = self.write_ptr;
+        self.write_ptr = try!(self.vmstate.write_str(self.write_ptr, data));
+        return Ok(str_ptr);
     }
 }

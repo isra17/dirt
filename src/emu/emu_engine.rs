@@ -1,9 +1,12 @@
 use dirt_engine::TargetInfo;
 use emu::Error;
-use emu::vmstate::VmState;
+use emu::args::{EmuArgs, PushableArgs};
+use emu::vmstate::{DataWriter, VmState};
+use emu::datatypes::DataType;
 
 pub struct EmuEffects {
     pub return_value: u64,
+    pub args: PushableArgs,
 }
 
 pub struct EmuEngine {
@@ -25,15 +28,16 @@ impl EmuEngine {
 
     pub fn call(&self,
                 target: &TargetInfo,
-                args: &[u64])
+                args: &EmuArgs)
                 -> Result<EmuEffects, Error> {
         self.clean_state().expect("Cannot clean emulator state");
 
+        let pushable_args = try!(args.as_pushable(&self.vmstate));
         let cc = ::emu::calling_convention::new(&target.cc);
-        try!(cc.init_args(args, &self.vmstate));
+        try!(cc.init_args(&pushable_args.pushed_args(), &self.vmstate));
         try!(self.call_and_return(target.fva));
 
-        return self.vmstate.collect_call_results();
+        return self.vmstate.collect_call_results(pushable_args);
     }
 
     fn clean_state(&self) -> Result<(), Error> {

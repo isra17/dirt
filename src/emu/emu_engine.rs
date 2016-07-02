@@ -1,13 +1,6 @@
-use std::rc::Rc;
-use unicorn;
-use unicorn::CpuX86;
-
 use dirt_engine::TargetInfo;
+use emu::Error;
 use emu::vmstate::VmState;
-
-pub enum EmuError {
-    UnicornError,
-}
 
 pub struct EmuEffects {
     return_value: u64,
@@ -18,25 +11,42 @@ pub struct EmuArgs {
 }
 
 pub struct EmuEngine {
-    pub uc: Rc<unicorn::CpuX86>,
-    vmstate: VmState,
+    pub vmstate: VmState,
 }
 
+const CODE_SENTINEL: u64 = 0x80000000;
+
 impl EmuEngine {
-    pub fn new() -> EmuEngine {
-        let uc = Rc::new(CpuX86::new(unicorn::Mode::MODE_32)
-            .expect("failed to create emulator"));
-        return EmuEngine {
-            uc: uc.clone(),
-            vmstate: VmState::new(uc.clone()),
-        };
+    pub fn new(vmstate: VmState) -> EmuEngine {
+        // Code sentinel used to trap function return.
+        vmstate.engine
+            .mem_map(CODE_SENTINEL, 1, ::unicorn::unicorn_const::PROT_EXEC)
+            .unwrap();
+        return EmuEngine { vmstate: vmstate };
     }
 
     pub fn call(&self,
                 target: &TargetInfo,
                 args: &EmuArgs)
-                -> Result<EmuEffects, EmuError> {
-        // return Ok(EmuEffects { return_value: 0 });
-        return Err(EmuError::UnicornError);
+                -> Result<EmuEffects, Error> {
+        self.clean_state().expect("Cannot clean emulator state");
+
+        let cc = ::emu::calling_convention::new(&target.cc);
+        try!(cc.init_args(args.argv.as_slice(), &self.vmstate));
+        try!(self.call_and_return(target.fva));
+
+        return self.collect_call_results();
+    }
+
+    fn clean_state(&self) -> Result<(), Error> {
+        return Err(Error::NotImplemented);
+    }
+
+    fn call_and_return(&self, ip: u64) -> Result<(), Error> {
+        return self.vmstate.set_call(ip, CODE_SENTINEL);
+    }
+
+    fn collect_call_results(&self) -> Result<EmuEffects, Error> {
+        return Err(Error::NotImplemented);
     }
 }

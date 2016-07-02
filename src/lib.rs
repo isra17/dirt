@@ -1,3 +1,5 @@
+extern crate byteorder;
+extern crate elf;
 extern crate unicorn;
 
 pub mod emu;

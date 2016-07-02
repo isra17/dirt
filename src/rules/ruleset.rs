@@ -1,22 +1,7 @@
-use emu::emu_engine::{EmuArgs, EmuEffects};
-
-pub trait RuleVerifier {
-    fn verify(&self, effects: EmuEffects) -> bool;
-}
-
-pub struct TargetRules {
-    pub inputs: Vec<EmuArgs>,
-    verifier: Box<RuleVerifier>,
-}
-
-impl RuleVerifier for TargetRules {
-    fn verify(&self, effects: EmuEffects) -> bool {
-        return self.verifier.verify(effects);
-    }
-}
+use rules::target_rules::TargetRules;
 
 pub struct RuleSet {
-    candidates_rules: Vec<TargetRules>,
+    pub candidates_rules: Vec<TargetRules>,
 }
 
 impl IntoIterator for RuleSet {

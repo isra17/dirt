@@ -1,5 +1,6 @@
 use emu::emu_engine::EmuEngine;
-use rules::ruleset::{RuleSet, RuleVerifier};
+use rules::ruleset::RuleSet;
+use rules::target_rules::RuleVerifier;
 
 #[derive(Debug)]
 pub enum DirtError {
@@ -50,7 +51,7 @@ impl DirtEngine {
             // result match its conditions.
             for input_args in &candidate_rule.inputs {
                 let target_match = match self.emu.call(target, input_args) {
-                    Ok(call_effects) => candidate_rule.verify(call_effects),
+                    Ok(call_effects) => candidate_rule.verify(input_args, call_effects, &self.emu.vmstate),
                     Err(_) => false,
                 };
 

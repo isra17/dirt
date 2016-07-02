@@ -2,6 +2,7 @@ pub mod elf;
 
 use std::io;
 
+#[derive(Debug)]
 pub enum Error {
     ParseError(::elf::ParseError),
     EmuError(::unicorn::unicorn_const::Error),

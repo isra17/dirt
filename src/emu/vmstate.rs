@@ -1,5 +1,6 @@
 use std::rc::Rc;
 use unicorn;
+use emu::emu_engine::EmuEffects;
 use emu::Error;
 use unicorn::x86_const::RegisterX86 as RegEnum;
 
@@ -49,6 +50,12 @@ impl VmState {
             .map_err(|e| Error::UnicornError(e));
     }
 
+    pub fn return_value(&self) -> Result<u64, Error> {
+        return self.engine
+            .reg_read(RegEnum::RAX as i32)
+            .map_err(|e| Error::UnicornError(e));
+    }
+
     pub fn stack_push(&self, value: u64) -> Result<(), Error> {
         let sp = try!(self.sp());
         // TODO: Make it arch dependant.
@@ -58,13 +65,26 @@ impl VmState {
             .map_err(|e| Error::UnicornError(e));
     }
 
-    /// Set the vm to a state right before calling |fva| and with the return
-    /// location set to |return_va|.
-    pub fn set_call(&self, fva: u64, return_va: u64) -> Result<(), Error> {
+
+    /// Set the emulator state's return value.
+    pub fn set_call_return(&self, return_va: u64) -> Result<(), Error> {
         // TODO: Need to make arch dependant?
         try!(self.stack_push(return_va));
-        try!(self.set_ip(fva));
         return Ok(());
+    }
+
+    pub fn collect_call_results(&self) -> Result<EmuEffects, Error> {
+        let return_value = try!(self.return_value());
+        return Ok(EmuEffects { return_value: return_value });
+    }
+
+    pub fn read_str(&self, addr: u64) -> Result<String, Error> {
+        let mut addr_it = addr;
+        loop {
+            addr_it += 1;
+            break;
+        }
+        return Err(Error::NotImplemented);
     }
 
     fn native_pack(&self, n: u64) -> Vec<u8> {

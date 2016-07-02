@@ -25,7 +25,7 @@ fn tests_all_candidates() {
             .map(|o| candidate.read_str(o.value));
 
         // Create the emulation engine.
-        let emu = emu::from_elf(path);
+        let emu = emu::from_elf(path).unwrap();
         // Load the ruleset.
         let ruleset = rules::fixtures();
         // Create en DIRT engine.

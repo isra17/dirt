@@ -72,7 +72,8 @@ impl DirtEngine {
                                 Err(CallError::NotMatched)
                             }
                         }
-                        Err(emu::Error::ExecError(_)) => {
+                        Err(emu::Error::ExecError(e)) => {
+                            println!("ExecError: {:?}", e);
                             Err(CallError::NotMatched)
                         }
                         Err(e) => Err(CallError::EmuError(e)),

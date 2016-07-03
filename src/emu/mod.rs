@@ -21,12 +21,19 @@ pub enum Error {
     StackUninitialized,
     EmuDataUninitialized,
     ExecError(::unicorn::unicorn_const::Error),
+    FromUtf8Error(::std::string::FromUtf8Error),
     NotImplemented,
 }
 
 impl ::std::convert::From<::unicorn::unicorn_const::Error> for Error {
     fn from(e: ::unicorn::Error) -> Error {
         return Error::UnicornError(e);
+    }
+}
+
+impl ::std::convert::From<::std::string::FromUtf8Error> for Error {
+    fn from(e: ::std::string::FromUtf8Error) -> Error {
+        return Error::FromUtf8Error(e);
     }
 }
 

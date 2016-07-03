@@ -44,7 +44,7 @@ fn tests_all_candidates() {
             }) {
                 Ok(Some(func_info)) => assert_eq!(func_info.name, fn_name),
                 Ok(None) => assert!(false, "Function not matched"),
-                Err(e) => assert!(false, e),
+                Err(e) => assert!(false, format!("Err: {:?}", e)),
             }
         }
     }

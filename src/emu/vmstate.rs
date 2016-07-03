@@ -159,11 +159,26 @@ impl VmState {
     }
 
     pub fn read_str(&self, addr: u64) -> Result<String, Error> {
-        return Err(Error::NotImplemented);
+        // TODO: Read a page at once, should be faster.
+        let mut data_buf: Vec<u8> = vec![];
+        let mut i = addr;
+        loop {
+            match try!(self.engine.mem_read(i, 1)).pop() {
+                None => break,
+                Some(0) => break,
+                Some(b) => data_buf.push(b),
+            }
+
+            i += 1;
+        }
+        return String::from_utf8(data_buf).map_err(|e| Error::FromUtf8Error(e));
     }
 
     pub fn write_str(&self, addr: u64, data: &str) -> Result<u64, Error> {
-        return Err(Error::NotImplemented);
+        let mut data_buf = data.as_bytes().to_vec();
+        data_buf.push(0);
+        try!(self.engine.mem_write(addr, &data_buf));
+        return Ok(addr + data_buf.len() as u64);
     }
 
     /// Unlike unicorn.mem_map, this function keep track of the mapping
@@ -187,9 +202,9 @@ impl VmState {
     fn native_pack(&self, n: u64) -> Vec<u8> {
         // TODO: Make it arch dependant.
         use byteorder::{ByteOrder, LittleEndian};
-        let mut packed = Vec::with_capacity(8);
-        LittleEndian::write_u64(packed.as_mut_slice(), n);
-        return packed;
+        let mut packed = [0; 8];
+        LittleEndian::write_u64(&mut packed, n);
+        return packed.to_vec();
     }
 }
 

@@ -1,3 +1,3 @@
 all:
-	gcc -static -Wall stdlib.c -o ../../candidates/stdlib
+	gcc -fno-builtin -fno-inline-small-functions -static -Wall stdlib.c -o ../../candidates/stdlib
 

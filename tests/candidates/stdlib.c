@@ -1,4 +1,5 @@
-#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 #define CANDIDATE(SYM) \
   const char test_##SYM[]=#SYM; \
   void mock_##SYM(){ \
@@ -6,8 +7,9 @@
     f(); \
   }
 
-CANDIDATE(strcpy);
-CANDIDATE(strcmp);
-CANDIDATE(strcat);
+CANDIDATE(sprintf);
+CANDIDATE(atoi);
 
-int main(){return 0;}
+int main(){
+  return 0;
+}

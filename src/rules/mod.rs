@@ -37,6 +37,7 @@ pub fn fixtures() -> ruleset::RuleSet {
                                         Rc::new(StringData::new("b"))])];
 
     let strcmp_rules = TargetRules {
+        name: String::from("strcmp"),
         inputs: inputs,
         verifier: Box::new(StrcmpRule {}),
     };

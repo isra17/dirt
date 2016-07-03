@@ -1,9 +1,11 @@
+use emu;
 use emu::emu_engine::EmuEngine;
 use rules::ruleset::RuleSet;
 use rules::target_rules::RuleVerifier;
 
 #[derive(Debug)]
-pub enum DirtError {
+pub enum Error {
+    EmuError(emu::Error),
 }
 
 pub enum CallingConvention {
@@ -31,6 +33,15 @@ pub struct FunctionInfo {
     pub name: String,
 }
 
+enum CallError {
+    /// Error that happened while emulating an unknown function. Expected to
+    /// happen often and likely to be a lead for negative.
+    NotMatched,
+    /// Error that happened while setting up the emulation engine. Must be
+    /// handled.
+    EmuError(emu::Error),
+}
+
 impl DirtEngine {
     /// Create a new DirtEngine given an emulation engine and ruleset.
     pub fn new(emu: EmuEngine, ruleset: RuleSet) -> DirtEngine {
@@ -43,25 +54,43 @@ impl DirtEngine {
     /// Identify a single function.
     pub fn identify_function(&self,
                              target: &TargetInfo)
-                             -> Result<FunctionInfo, DirtError> {
+                             -> Result<Option<FunctionInfo>, Error> {
         // Iterate through each candidate's rules.
         for candidate_rule in &self.ruleset {
             // For each target rules, get a list of the input argument to be
             // emulated and run the unknown function. Check with the rule if the
             // result match its conditions.
-            for input_args in &candidate_rule.inputs {
-                let target_match =
-                    match self.emu.call(target, input_args) {
-                        Ok(call_effects) => candidate_rule.verify(&call_effects, &self.emu.vmstate),
-                        Err(_) => false,
+            let call_result: Result<Vec<()>, CallError> = candidate_rule.inputs
+                .iter()
+                .map(|input_args| {
+                    return match self.emu.call(target, input_args) {
+                        Ok(call_effects) => {
+                            if candidate_rule.verify(&call_effects,
+                                                     &self.emu.vmstate) {
+                                Ok(())
+                            } else {
+                                Err(CallError::NotMatched)
+                            }
+                        }
+                        Err(emu::Error::ExecError(_)) => {
+                            Err(CallError::NotMatched)
+                        }
+                        Err(e) => Err(CallError::EmuError(e)),
                     };
+                })
+                .collect();
 
-                if !target_match {
-                    break;
+            match call_result {
+                Ok(_) => {
+                    return Ok(Some(FunctionInfo {
+                        name: candidate_rule.name.clone(),
+                    }))
                 }
-            }
+                Err(CallError::NotMatched) => (),
+                Err(CallError::EmuError(e)) => return Err(Error::EmuError(e)),
+            };
         }
-        return Ok(FunctionInfo { name: String::new() });
+        return Ok(None);
     }
 
     /// Helper function, returns the default calling convention for the target

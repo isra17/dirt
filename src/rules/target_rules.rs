@@ -7,6 +7,7 @@ pub trait RuleVerifier {
 }
 
 pub struct TargetRules {
+    pub name: String,
     pub inputs: Vec<EmuArgs>,
     pub verifier: Box<RuleVerifier>,
 }

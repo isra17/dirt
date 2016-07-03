@@ -21,16 +21,15 @@ impl EmuArgs {
     pub fn as_pushable(&self,
                        vmstate: &VmState)
                        -> Result<PushableArgs, Error> {
-        let mut data_writer = DataWriter::new(vmstate);
-        return Ok(PushableArgs {
-            argv: try!(self.argv
-                .iter()
-                .map(|a| {
-                    Ok(PushableArg(a.clone(),
-                                   try!(a.pushable_value(&mut data_writer))))
-                })
-                .collect()),
-        });
+        let mut data_writer = try!(DataWriter::new(vmstate));
+        let argv: Result<Vec<_>, Error> = self.argv
+            .iter()
+            .map(|a| {
+                Ok(PushableArg(a.clone(),
+                               try!(a.pushable_value(&mut data_writer))))
+            })
+            .collect();
+        return Ok(PushableArgs { argv: try!(argv) });
     }
 }
 

@@ -42,7 +42,8 @@ fn tests_all_candidates() {
                 fva: fva,
                 cc: dirt.default_cc(),
             }) {
-                Ok(func_info) => assert_eq!(func_info.name, fn_name),
+                Ok(Some(func_info)) => assert_eq!(func_info.name, fn_name),
+                Ok(None) => assert!(false, "Function not matched"),
                 Err(e) => assert!(false, e),
             }
         }

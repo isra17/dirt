@@ -1,10 +1,12 @@
 use utils::LogError;
 use emu::loader::Error;
+use emu::object_info::MemMap;
 use emu::vmstate::VmState;
 use elf;
-use std::fs::File;
 use std::io;
+use std::fs::File;
 use std::path::Path;
+use std::rc::Rc;
 use unicorn;
 
 /// Align a memory size.
@@ -43,9 +45,11 @@ pub fn load(path: &Path) -> Result<VmState, Error> {
 
     let elf_file = try!(elf::File::open_path(path));
 
-    let emu = match try!(Arch::new(elf_file.ehdr.machine)) {
+    let emu = Rc::new(match try!(Arch::new(elf_file.ehdr.machine)) {
         Arch(arch, mode) => try!(unicorn::Unicorn::new(arch, mode)),
-    };
+    });
+
+    let mut vmstate = VmState::new(emu.clone());
 
     // unwrap, we open it once, should open again...
     let mut file_stream = File::open(path).unwrap();
@@ -58,7 +62,12 @@ pub fn load(path: &Path) -> Result<VmState, Error> {
         let offset = (phdr.vaddr - page_addr) as usize;
         let page_size = aligned_size(phdr.memsz as usize + offset, 0x1000);
         let flags = prot_from_elf_flags(phdr.flags);
-        try!(emu.mem_map(page_addr, page_size, flags)
+        try!(vmstate.mem_map(MemMap {
+                addr: page_addr,
+                size: page_size,
+                flags: flags,
+                name: String::new(),
+            })
             .log_err(|_| format!("Failed to map segment: {:?}", phdr)));
 
         try!(file_stream.seek(io::SeekFrom::Start(phdr.offset))
@@ -78,7 +87,6 @@ pub fn load(path: &Path) -> Result<VmState, Error> {
             }));
     }
 
-    let vmstate = VmState::new(::std::rc::Rc::new(emu));
 
     return Ok(vmstate);
 }

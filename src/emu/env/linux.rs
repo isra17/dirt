@@ -19,12 +19,33 @@ pub fn init_state(vmstate: &mut VmState) -> Result<(), Error> {
 
     try!(init_stack(vmstate, &mut kernel_writer));
 
+    // Emulate up to main.
+    let start_fva = vmstate.object_info
+        .symbols
+        .get("_start")
+        .expect("_start not found")
+        .value;
+    let main_fva =
+        vmstate.object_info.symbols.get("main").expect("main not found").value;
+    try!(vmstate.engine
+        .emu_start(start_fva, main_fva, emu::EMU_TIMEOUT, emu::EMU_MAXCOUNT));
+
     return Ok(());
 }
 
 fn init_stack(vmstate: &VmState,
               data_writer: &mut DataWriter)
               -> Result<(), Error> {
-    try!(vmstate.stack_push(try!(data_writer.write_str(""))));
+    // auxv
+    try!(vmstate.stack_push(0));
+    // env
+    try!(vmstate.stack_push(0));
+    // argv
+    try!(vmstate.stack_push(0));
+    try!(vmstate.stack_push(try!(data_writer.write_str("./emu"))));
+
+    // argc
+    try!(vmstate.stack_push(1));
+
     return Ok(());
 }

@@ -98,6 +98,16 @@ pub fn load(path: &Path) -> Result<VmState, Error> {
             }));
     }
 
+    // Create symbols hashmap.
+    if let Some(symtab) = elf_file.get_section(".symtab") {
+        for symbol in elf_file.get_symbols(symtab)
+            .expect("Failed to parse .symtab")
+            .iter() {
+            vmstate.object_info
+                .symbols
+                .insert(symbol.name.clone(), symbol.clone());
+        }
+    }
 
     return Ok(vmstate);
 }

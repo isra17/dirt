@@ -1,5 +1,6 @@
-use unicorn;
+use elf::types::Symbol;
 use std::collections::HashMap;
+use unicorn;
 
 pub type MemFlags = unicorn::unicorn_const::Protection;
 
@@ -13,10 +14,14 @@ pub struct MemMap {
 
 pub struct ObjectInfo {
     pub mem_maps: HashMap<String, MemMap>,
+    pub symbols: HashMap<String, Symbol>,
 }
 
 impl ObjectInfo {
     pub fn new() -> ObjectInfo {
-        return ObjectInfo { mem_maps: HashMap::new() };
+        return ObjectInfo {
+            mem_maps: HashMap::default(),
+            symbols: HashMap::default(),
+        };
     }
 }

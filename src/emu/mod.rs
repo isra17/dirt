@@ -17,6 +17,11 @@ pub const EMUDATA_SIZE: usize = 0x10000;
 pub const KERNEL_ADDR: u64 = 0x12000000;
 pub const KERNEL_SIZE: usize = 0x10000;
 
+pub const CODE_SENTINEL: u64 = 0x80000000;
+pub const EMU_TIMEOUT: u64 = 1 * 1000 * 1000; // 1 sec.
+pub const EMU_MAXCOUNT: usize = 0;
+
+
 #[derive(Debug)]
 pub enum Error {
     UnicornError(::unicorn::unicorn_const::Error),

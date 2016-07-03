@@ -34,7 +34,7 @@ extern "C" fn on_code(handle: unicorn::uc_handle,
         Err(e) => format!("<err: {:?}", e),
     };
 
-    println!("{:?}\n{}", code, inst_fmt);
+    println!("{}", inst_fmt);
 }
 
 extern "C" fn on_mem(_: unicorn::uc_handle,
@@ -51,7 +51,7 @@ impl Debugger {
         let code_hook =
             try!(engine.add_code_hook(HookType::CODE, 1, 0, on_code));
         let mem_hook =
-            try!(engine.add_mem_hook(HookType::MEM_READ_UNMAPPED, 1, 0, on_mem));
+            try!(engine.add_mem_hook(HookType::MEM_READ_PROT, 1, 0, on_mem));
 
         return Ok(Debugger {
             code_hook: code_hook,

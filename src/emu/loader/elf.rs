@@ -22,8 +22,18 @@ fn aligned_addr(addr: u64, page_size: u64) -> u64 {
 /// Convert ::elf::types::ProgFlag to ::unicorn::Permission.
 fn prot_from_elf_flags(flag: elf::types::ProgFlag)
                        -> unicorn::unicorn_const::Protection {
-    return unicorn::unicorn_const::Protection::from_bits(flag.0)
-        .expect("Cannot convert ELF flags to unicorn Protection");
+    let flag = flag.0;
+    let mut prot = unicorn::unicorn_const::PROT_NONE;
+    if flag & elf::types::PF_X.0 != 0 {
+        prot |= unicorn::unicorn_const::PROT_EXEC;
+    }
+    if flag & elf::types::PF_R.0 != 0 {
+        prot |= unicorn::unicorn_const::PROT_READ;
+    }
+    if flag & elf::types::PF_W.0 != 0 {
+        prot |= unicorn::unicorn_const::PROT_WRITE;
+    }
+    return prot;
 }
 
 struct Arch(unicorn::unicorn_const::Arch, unicorn::unicorn_const::Mode);

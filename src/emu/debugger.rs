@@ -3,15 +3,12 @@ use emu::Error;
 use std::rc::Rc;
 use unicorn;
 use unicorn::unicorn_const::HookType;
-use unicorn::x86_const::RegisterX86;
 
 pub struct Debugger {
     code_hook: unicorn::uc_hook,
     mem_hook: unicorn::uc_hook,
     engine: Rc<unicorn::Unicorn>,
 }
-
-fn trace(emu: unicorn::UnicornHandle) {}
 
 extern "C" fn on_code(handle: unicorn::uc_handle,
                       address: u64,

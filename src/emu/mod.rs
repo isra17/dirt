@@ -3,16 +3,19 @@ pub mod calling_convention;
 pub mod datatypes;
 pub mod debugger;
 pub mod emu_engine;
+pub mod env;
 pub mod loader;
 pub mod object_info;
 pub mod vmstate;
 
 use std::path::Path;
 
-pub const EMUDATA_SIZE: usize = 0x10000;
-pub const EMUDATA_ADDR: u64 = 0x11000000;
-pub const STACK_SIZE: usize = 0x10000;
 pub const STACK_ADDR: u64 = 0x10000000;
+pub const STACK_SIZE: usize = 0x10000;
+pub const EMUDATA_ADDR: u64 = 0x11000000;
+pub const EMUDATA_SIZE: usize = 0x10000;
+pub const KERNEL_ADDR: u64 = 0x12000000;
+pub const KERNEL_SIZE: usize = 0x10000;
 
 #[derive(Debug)]
 pub enum Error {

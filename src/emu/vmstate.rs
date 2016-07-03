@@ -2,6 +2,7 @@ use emu;
 use emu::Error;
 use emu::args::PushableArgs;
 use emu::emu_engine::EmuEffects;
+use emu::env;
 use emu::object_info::{MemMap, ObjectInfo};
 use std::rc::Rc;
 use unicorn;
@@ -57,11 +58,23 @@ impl VmState {
             .log_err(|_| String::from("Failed to map emudata")));
         self.emudata_info = Some(emudata_info);
 
+        try!(self.init_env());
+
         return Ok(());
     }
 
+    fn init_env(&mut self) -> Result<(), Error> {
+        // TODO: Have a VMEnv trait that set up environment for Linux,
+        // Windows, etc.
+
+        return env::linux::init_state(self);
+    }
+
     pub fn emudata_writer<'a>(&'a self) -> Result<DataWriter<'a>, Error> {
-        return DataWriter::new(self);
+        if let Some(ref emudata) = self.emudata_info {
+            return Ok(DataWriter::new(self, emudata.addr));
+        }
+        return Err(Error::EmuDataUninitialized);
     }
 
     pub fn base_sp(&self) -> Option<u64> {
@@ -209,14 +222,11 @@ impl VmState {
 }
 
 impl<'a> DataWriter<'a> {
-    pub fn new(vmstate: &'a VmState) -> Result<DataWriter<'a>, Error> {
-        if let Some(ref emudata_info) = vmstate.emudata_info {
-            return Ok(DataWriter {
-                write_ptr: emudata_info.addr,
-                vmstate: vmstate,
-            });
-        }
-        return Err(Error::EmuDataUninitialized);
+    pub fn new(vmstate: &'a VmState, write_ptr: u64) -> DataWriter<'a> {
+        return DataWriter {
+            write_ptr: write_ptr,
+            vmstate: vmstate,
+        };
     }
 
     pub fn write_str(&mut self, data: &str) -> Result<u64, Error> {

@@ -1,5 +1,5 @@
 use emu::Error;
-use emu::vmstate::{DataWriter, VmState};
+use emu::vmstate::VmState;
 use emu::datatypes::DataType;
 use std::rc::Rc;
 
@@ -21,7 +21,7 @@ impl EmuArgs {
     pub fn as_pushable(&self,
                        vmstate: &VmState)
                        -> Result<PushableArgs, Error> {
-        let mut data_writer = try!(DataWriter::new(vmstate));
+        let mut data_writer = try!(vmstate.emudata_writer());
         let argv: Result<Vec<_>, Error> = self.argv
             .iter()
             .map(|a| {

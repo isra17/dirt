@@ -76,6 +76,7 @@ pub fn load(path: &Path) -> Result<VmState, Error> {
             }));
 
         let mut data_buf = Vec::with_capacity(phdr.filesz as usize);
+        data_buf.resize(phdr.filesz as usize, 0);
         try!(file_stream.read_exact(data_buf.as_mut_slice())
             .log_err(|_| {
                 format!("Failed to read segment content: {:?}", phdr)

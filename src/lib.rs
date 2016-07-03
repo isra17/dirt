@@ -1,4 +1,5 @@
 extern crate byteorder;
+extern crate capstone;
 extern crate elf;
 extern crate unicorn;
 

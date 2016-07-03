@@ -1,7 +1,9 @@
+use capstone;
 use emu::Error;
 use std::rc::Rc;
 use unicorn;
 use unicorn::unicorn_const::HookType;
+use unicorn::x86_const::RegisterX86;
 
 pub struct Debugger {
     code_hook: unicorn::uc_hook,
@@ -9,11 +11,30 @@ pub struct Debugger {
     engine: Rc<unicorn::Unicorn>,
 }
 
-extern "C" fn on_code(_: unicorn::uc_handle,
+fn trace(emu: unicorn::UnicornHandle) {}
+
+extern "C" fn on_code(handle: unicorn::uc_handle,
                       address: u64,
                       size: u32,
                       _: *mut u64) {
-    println!("0x{:016x}: [{}]", address, size);
+    let emu = unsafe { unicorn::UnicornHandle::new(handle) };
+    let cs = capstone::Capstone::new(capstone::CsArch::ARCH_X86,
+                                     capstone::CsMode::MODE_64)
+        .expect("Failed to init capstone");
+    let code = emu.mem_read(address, size as usize)
+        .expect("Failed to read code memory");
+
+    let inst_fmt = match cs.disasm(&code, address, 1) {
+        Ok(insts) => {
+            match insts.iter().next() {
+                Some(inst) => format!("{}", inst),
+                None => String::from("<none>"),
+            }
+        }
+        Err(e) => format!("<err: {:?}", e),
+    };
+
+    println!("{:?}\n{}", code, inst_fmt);
 }
 
 extern "C" fn on_mem(_: unicorn::uc_handle,

@@ -58,7 +58,7 @@ impl VmState {
             .log_err(|_| String::from("Failed to map emudata")));
         self.emudata_info = Some(emudata_info);
 
-        try!(self.init_env());
+        // try!(self.init_env());
 
         return Ok(());
     }
@@ -66,7 +66,6 @@ impl VmState {
     fn init_env(&mut self) -> Result<(), Error> {
         // TODO: Have a VMEnv trait that set up environment for Linux,
         // Windows, etc.
-
         return env::linux::init_state(self);
     }
 

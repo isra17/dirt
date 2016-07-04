@@ -38,14 +38,52 @@ fn init_stack(vmstate: &VmState,
               -> Result<(), Error> {
     // auxv
     try!(vmstate.stack_push(0));
+    for AuxVec(auxv_type, value) in get_auxv() {
+        try!(vmstate.stack_push(auxv_type as u64));
+        try!(vmstate.stack_push(value));
+    }
     // env
     try!(vmstate.stack_push(0));
     // argv
     try!(vmstate.stack_push(0));
-    try!(vmstate.stack_push(try!(data_writer.write_str("./emu"))));
+    try!(vmstate.stack_push(try!(data_writer.write_str("/emu"))));
 
     // argc
     try!(vmstate.stack_push(1));
 
     return Ok(());
+}
+
+#[allow(non_camel_case_types)]
+pub enum AuxVecType {
+    ELF_AT_NULL = 0,
+    ELF_AT_IGNORE,
+    ELF_AT_EXECFD,
+    ELF_AT_PHDR,
+    ELF_AT_PHENT,
+    ELF_AT_PHNUM,
+    ELF_AT_PAGESZ,
+    ELF_AT_BASE,
+    ELF_AT_FLAGS,
+    ELF_AT_ENTRY,
+    ELF_AT_NOTELF,
+    ELF_AT_UID,
+    ELF_AT_EUID,
+    ELF_AT_GID,
+    ELF_AT_EGID,
+    ELF_AT_PLATFORM,
+    ELF_AT_HWCAP,
+    ELF_AT_CLKTCK,
+    ELF_AT_RANDOM = 25,
+    ELF_AT_SYSINFO = 32,
+    ELF_AT_SYSINFO_EHDR,
+}
+
+struct AuxVec(AuxVecType, u64);
+
+fn get_auxv() -> Vec<AuxVec> {
+    return vec![
+        AuxVec(AuxVecType::ELF_AT_PAGESZ, 0x1000),
+        AuxVec(AuxVecType::ELF_AT_FLAGS, 0),
+    ];
 }

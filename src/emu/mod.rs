@@ -16,6 +16,10 @@ pub const EMUDATA_ADDR: u64 = 0x11000000;
 pub const EMUDATA_SIZE: usize = 0x10000;
 pub const KERNEL_ADDR: u64 = 0x12000000;
 pub const KERNEL_SIZE: usize = 0x10000;
+pub const TLS_ADDR: u64 = 0x13000000;
+pub const TLS_SIZE: usize = 0x10000;
+pub const SHELLCODE_ADDR: u64 = 0x14000000;
+pub const SHELLCODE_SIZE: usize = 0x10000;
 
 pub const CODE_SENTINEL: u64 = 0x80000000;
 pub const EMU_TIMEOUT: u64 = 1 * 1000 * 1000; // 1 sec.

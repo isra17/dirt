@@ -10,6 +10,7 @@ pub enum Error {
 
 pub enum CallingConvention {
     Stdcall,
+    SystemV,
 }
 
 /// DirtEngine is the glue code between the rules, emulation and function list
@@ -97,6 +98,6 @@ impl DirtEngine {
     /// Helper function, returns the default calling convention for the target
     /// plateform.
     pub fn default_cc(&self) -> CallingConvention {
-        CallingConvention::Stdcall
+        CallingConvention::SystemV
     }
 }

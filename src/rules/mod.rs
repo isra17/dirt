@@ -16,19 +16,18 @@ impl RuleVerifier for AtoiRule {
             Err(_) => return false,
         };
 
-        let n: i32 = a.parse().unwrap();
-
-        return effects.return_value as i32 == n;
+        return effects.return_value as i32 == 8 && a == "AA CC BB";
     }
 }
 
 pub fn fixtures() -> ruleset::RuleSet {
     use emu::datatypes::StringData;
-    let inputs = vec![EmuArgs::new(vec![Rc::new(StringData::new("123"))]),
-                      EmuArgs::new(vec![Rc::new(StringData::new("-12"))])];
+    let inputs = vec![EmuArgs::new(vec![Rc::new(StringData::new("_____________")),
+                                        Rc::new(StringData::new("AA %s BB")),
+                                        Rc::new(StringData::new("CC"))])];
 
     let atoi_rules = TargetRules {
-        name: String::from("atoi"),
+        name: String::from("sprintf"),
         inputs: inputs,
         verifier: Box::new(AtoiRule {}),
     };

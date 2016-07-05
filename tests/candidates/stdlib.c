@@ -8,7 +8,6 @@
   }
 
 CANDIDATE(sprintf);
-CANDIDATE(atoi);
 
 int main(){
   return 0;

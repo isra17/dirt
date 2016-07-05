@@ -6,7 +6,7 @@ use emu::env;
 use emu::object_info::{MemMap, ObjectInfo};
 use std::rc::Rc;
 use unicorn;
-use unicorn::unicorn_const::{PROT_READ, PROT_WRITE};
+use unicorn::unicorn_const::{PROT_EXEC, PROT_READ, PROT_WRITE};
 use unicorn::x86_const::RegisterX86 as RegEnum;
 use utils::LogError;
 
@@ -15,6 +15,7 @@ pub struct VmState {
     pub object_info: ObjectInfo,
     pub stack_info: Option<MemMap>,
     pub emudata_info: Option<MemMap>,
+    pub shellcode_info: Option<MemMap>,
 }
 
 pub struct DataWriter<'a> {
@@ -29,6 +30,7 @@ impl VmState {
             object_info: ObjectInfo::new(),
             stack_info: None,
             emudata_info: None,
+            shellcode_info: None,
         };
     }
 
@@ -47,6 +49,7 @@ impl VmState {
         self.set_sp(self.base_sp().unwrap())
             .expect("Failed to set sp to base of stack");
 
+        // Init emudata.
         let emudata_info = MemMap {
             addr: emu::EMUDATA_ADDR,
             size: emu::EMUDATA_SIZE,
@@ -58,7 +61,19 @@ impl VmState {
             .log_err(|_| String::from("Failed to map emudata")));
         self.emudata_info = Some(emudata_info);
 
-        // try!(self.init_env());
+        // Init shellcode memory.
+        let shellcode_info = MemMap {
+            addr: emu::SHELLCODE_ADDR,
+            size: emu::SHELLCODE_SIZE,
+            flags: PROT_READ | PROT_WRITE | PROT_EXEC,
+            name: String::from("[shellcode]"),
+        };
+
+        try!(self.mem_map(shellcode_info.clone())
+            .log_err(|_| String::from("Failed to map shellcode")));
+        self.shellcode_info = Some(shellcode_info);
+
+        try!(self.init_env());
 
         return Ok(());
     }
@@ -209,6 +224,17 @@ impl VmState {
         let addr = mem_map.addr;
         self.object_info.mem_maps.insert(mem_map.name.clone(), mem_map);
         return Ok(addr);
+    }
+
+    pub fn run_shellcode(&self, code: &[u8]) -> Result<(), Error> {
+        let addr = self.shellcode_info.as_ref().unwrap().addr;
+        try!(self.engine.mem_write(addr, code));
+        try!(self.engine.emu_start(addr,
+                                   addr + code.len() as u64,
+                                   emu::EMU_TIMEOUT,
+                                   emu::EMU_MAXCOUNT));
+
+        return Ok(());
     }
 
     fn native_pack(&self, n: u64) -> Vec<u8> {

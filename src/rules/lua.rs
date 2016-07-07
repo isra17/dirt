@@ -5,6 +5,8 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use ::emu::emu_engine::EmuEffects;
 
+const LUARULES_REG_KEY: &'static str = "dirt";
+
 #[derive(Debug)]
 pub enum Error {
     LuaError(String),
@@ -17,6 +19,10 @@ pub struct LuaRules {
 }
 
 fn lua_rule(lua: &mut ::lua::State) -> i32 {
+    lua.push_string(LUARULES_REG_KEY);
+    lua.get_table(lua::REGISTRYINDEX);
+    let lua_rule = lua.to_integer(-1);
+
     let name = lua.to_str(1)
         .unwrap()
         .to_owned();
@@ -27,7 +33,7 @@ fn lua_rule(lua: &mut ::lua::State) -> i32 {
         args.push(arg);
     }
 
-    println!("New rule: {:?}, {:?}", name, args);
+    println!("[{:x}] New rule: {:?}, {:?}", lua_rule, name, args);
     return 0;
 }
 
@@ -36,6 +42,10 @@ impl LuaRules {
         let mut state = lua::State::new();
         state.push_fn(lua_func!(lua_rule));
         state.set_global("rule");
+
+        state.push_string(LUARULES_REG_KEY);
+        state.push_integer(0xdeadbeef);
+        state.set_table(lua::REGISTRYINDEX);
 
         let mut candidates_rules = HashMap::new();
         let args = ::emu::args::EmuArgs::new(vec![

@@ -1,37 +1,26 @@
-pub mod ruleset;
-pub mod target_rules;
+pub mod rule;
+pub mod lua;
 
-use emu::args::EmuArgs;
-use emu::emu_engine::EmuEffects;
-use emu::vmstate::VmState;
-use self::target_rules::{RuleVerifier, TargetRules};
-use std::rc::Rc;
+pub use self::rule::Rule;
+pub use self::lua::LuaRules as RuleSet;
 
-struct AtoiRule;
-impl RuleVerifier for AtoiRule {
-    fn verify(&self, effects: &EmuEffects, vmstate: &VmState) -> bool {
-        let pushed_args = effects.args.pushed_args();
-        let a = match vmstate.read_str(pushed_args[0]) {
-            Ok(x) => x,
-            Err(_) => return false,
-        };
+use std::fs;
+use std::path::Path;
 
-        return effects.return_value as i32 == 8 && a == "AA CC BB";
+pub fn load_all(_: &Path) -> RuleSet {
+    let lua = RuleSet::new();
+    let _: Vec<&Rule> = Vec::new();
+    // List lua rules files in rules folder.
+    let paths = fs::read_dir("./candidates").unwrap();
+    // Load and parse each rules.
+    let filepaths =
+        paths.filter(|p| p.as_ref().unwrap().file_type().unwrap().is_file());
+    for dir_entry in filepaths {
+        let entry_path = dir_entry.unwrap().path();
+        let path = entry_path.as_path();
+
+        lua.load(path).expect("Failed to load rules");
     }
-}
 
-pub fn fixtures() -> ruleset::RuleSet {
-    use emu::datatypes::StringData;
-    let inputs = vec![EmuArgs::new(vec![Rc::new(StringData::new("_____________")),
-                                        Rc::new(StringData::new("AA %s BB")),
-                                        Rc::new(StringData::new("CC"))])];
-
-    let atoi_rules = TargetRules {
-        name: String::from("sprintf"),
-        inputs: inputs,
-        verifier: Box::new(AtoiRule {}),
-    };
-
-    let ruleset = ruleset::RuleSet { candidates_rules: vec![atoi_rules] };
-    return ruleset;
+    return lua;
 }

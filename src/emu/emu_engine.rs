@@ -5,7 +5,8 @@ use emu::args::{EmuArgs, PushableArgs};
 use emu::debugger::Debugger;
 use emu::vmstate::VmState;
 
-pub struct EmuEffects {
+pub struct EmuEffects<'a> {
+    pub vmstate: &'a VmState,
     pub return_value: u64,
     pub args: PushableArgs,
 }

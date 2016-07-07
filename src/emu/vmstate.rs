@@ -180,6 +180,7 @@ impl VmState {
                                 -> Result<EmuEffects, Error> {
         let return_value = try!(self.return_value());
         return Ok(EmuEffects {
+            vmstate: self,
             return_value: return_value,
             args: args,
         });

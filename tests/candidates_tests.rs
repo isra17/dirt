@@ -1,7 +1,10 @@
 extern crate dirt;
+
+mod bin_file;
+
 use dirt::{emu, rules};
 use dirt::dirt_engine::{DirtEngine, TargetInfo};
-mod bin_file;
+use std::path::Path;
 
 #[test]
 fn tests_all_candidates() {
@@ -28,7 +31,7 @@ fn tests_all_candidates() {
         let emu = emu::from_elf(path)
             .expect("Failed to create emulator from ELF");
         // Load the ruleset.
-        let ruleset = rules::fixtures();
+        let ruleset = rules::load_all(Path::new("./rules"));
         // Create en DIRT engine.
         let dirt = DirtEngine::new(emu, ruleset);
 

@@ -1,6 +1,7 @@
 extern crate byteorder;
 extern crate capstone;
 extern crate elf;
+extern crate lua;
 extern crate unicorn;
 
 pub mod dirt_engine;

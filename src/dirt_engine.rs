@@ -1,7 +1,6 @@
 use emu;
 use emu::emu_engine::EmuEngine;
-use rules::ruleset::RuleSet;
-use rules::target_rules::RuleVerifier;
+use rules::RuleSet;
 
 #[derive(Debug)]
 pub enum Error {
@@ -57,17 +56,15 @@ impl DirtEngine {
                              target: &TargetInfo)
                              -> Result<Option<FunctionInfo>, Error> {
         // Iterate through each candidate's rules.
-        for candidate_rule in &self.ruleset {
+        for (candidate_name, rules) in self.ruleset.candidates() {
             // For each target rules, get a list of the input argument to be
             // emulated and run the unknown function. Check with the rule if the
             // result match its conditions.
-            let call_result: Result<Vec<()>, CallError> = candidate_rule.inputs
-                .iter()
-                .map(|input_args| {
-                    return match self.emu.call(target, input_args) {
+            let call_result: Result<Vec<()>, CallError> = rules.iter()
+                .map(|rule| {
+                    return match self.emu.call(target, &rule.args) {
                         Ok(call_effects) => {
-                            if candidate_rule.verify(&call_effects,
-                                                     &self.emu.vmstate) {
+                            if (rule.verifier)(&call_effects) {
                                 Ok(())
                             } else {
                                 Err(CallError::NotMatched)
@@ -85,7 +82,7 @@ impl DirtEngine {
             match call_result {
                 Ok(_) => {
                     return Ok(Some(FunctionInfo {
-                        name: candidate_rule.name.clone(),
+                        name: candidate_name.clone(),
                     }))
                 }
                 Err(CallError::NotMatched) => (),

@@ -1,6 +1,6 @@
 [package]
 name = "dirt"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["isra17 <isra017@gmail.com>"]
 
 [lib]
@@ -11,4 +11,4 @@ byteorder = "0.5.3"
 capstone = { git = "https://github.com/richo/capstone-rs.git", rev = "d3cf5768ecc2b38e07f97b0aa95022cef1b6b5c7" }
 elf = { git = "https://github.com/philipc/rust-elf.git", rev = "d957556a49b8dc06ff206ba2b2c2a040f040d782" }
 unicorn = { git = "https://github.com/isra17/unicorn-rs.git" }
-
+lua = { git = "https://github.com/jcmoyer/rust-lua53", rev = "a735b6103208d0a4cfc410dd5b32e96786de4ca2" }

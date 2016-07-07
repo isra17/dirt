@@ -1,6 +1,7 @@
 extern crate byteorder;
 extern crate capstone;
 extern crate elf;
+#[macro_use]
 extern crate lua;
 extern crate unicorn;
 

@@ -7,6 +7,7 @@ use ::emu::emu_engine::EmuEffects;
 
 #[derive(Debug)]
 pub enum Error {
+    LuaError(String),
     NotImplemented,
 }
 
@@ -15,9 +16,27 @@ pub struct LuaRules {
     candidates_rules: HashMap<String, Vec<Rule>>,
 }
 
+fn lua_rule(lua: &mut ::lua::State) -> i32 {
+    let name = lua.to_str(1)
+        .unwrap()
+        .to_owned();
+    let top = lua.get_top();
+    let mut args = Vec::new();
+    for i in 2..top - 1 {
+        let arg = lua.to_str(i).unwrap().to_owned();
+        args.push(arg);
+    }
+
+    println!("New rule: {:?}, {:?}", name, args);
+    return 0;
+}
+
 impl LuaRules {
     pub fn new() -> LuaRules {
-        let state = lua::State::new();
+        let mut state = lua::State::new();
+        state.push_fn(lua_func!(lua_rule));
+        state.set_global("rule");
+
         let mut candidates_rules = HashMap::new();
         let args = ::emu::args::EmuArgs::new(vec![
                Rc::new(::emu::datatypes::StringData::new("AAAAAAAAAA")),
@@ -45,15 +64,28 @@ impl LuaRules {
         };
     }
 
-    pub fn load(&self, _: &Path) -> Result<(), Error> {
-        return Ok(());
-    }
+    pub fn load(&mut self, path: &Path) -> Result<(), Error> {
+        println!("{:?}", path);
+        let r = self.lua.load_file(path.to_str().unwrap());
+        if r.is_err() {
+            return Err(self.pop_error());
+        }
 
-    pub fn rules(&self) -> &[Rule] {
-        return &[];
+        let r = self.lua.pcall(0, 0, 0);
+        if r.is_err() {
+            return Err(self.pop_error());
+        }
+
+        return Ok(());
     }
 
     pub fn candidates(&self) -> &HashMap<String, Vec<Rule>> {
         return &self.candidates_rules;
+    }
+
+    fn pop_error(&mut self) -> Error {
+        let err = Error::LuaError(self.lua.to_str(-1).unwrap().to_owned());
+        self.lua.pop(1);
+        return err;
     }
 }

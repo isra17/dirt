@@ -41,7 +41,6 @@ impl Rule for LuaRule {
         lua.raw_geti(lua::REGISTRYINDEX, self.fn_ref.value() as i64);
 
         lua.push_integer(result.return_value as i64);
-
         let r = lua.pcall(1, 1, 0);
 
         if r.is_err() {
@@ -89,6 +88,9 @@ impl LuaRules {
             let mut lua = lua_rules.lua.borrow_mut();
             lua.push_fn(lua_func!(lua_rule));
             lua.set_global("rule");
+
+            lua.load_library(::lua::Library::Base);
+            lua.load_library(::lua::Library::Io);
         }
 
         // Register the LuaRules object to the lua internal registry for future

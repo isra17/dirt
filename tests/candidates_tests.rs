@@ -37,18 +37,37 @@ fn tests_all_candidates() {
 
         // Iterate through all test_ symbols and run the tested function
         // against the DIRT engine.
-        for test in tests_iter {
-            let fn_name = test.unwrap();
-            let fva = candidate.get_symbol(fn_name.as_str()).unwrap().value;
+        let results: Vec<bool> = tests_iter.map(|test| {
+                let fn_name = test.unwrap();
+                let fva = candidate.get_symbol(fn_name.as_str()).unwrap().value;
 
-            match dirt.identify_function(&TargetInfo {
-                fva: fva,
-                cc: dirt.default_cc(),
-            }) {
-                Ok(Some(func_info)) => assert_eq!(func_info.name, fn_name),
-                Ok(None) => assert!(false, "Function not matched"),
-                Err(e) => assert!(false, format!("Err: {:?}", e)),
-            }
-        }
+                match dirt.identify_function(&TargetInfo {
+                    fva: fva,
+                    cc: dirt.default_cc(),
+                }) {
+                    Ok(Some(func_info)) => {
+                        if func_info.name == fn_name {
+                            println!("{}: Ok!", fn_name);
+                            return true;
+                        } else {
+                            println!("{}: Overmatching {}",
+                                     func_info.name,
+                                     fn_name);
+                            return false;
+                        }
+                    }
+                    Ok(None) => {
+                        println!("{}: No match", fn_name);
+                        return false;
+                    }
+                    Err(e) => {
+                        println!("{}: Err({:?})", fn_name, e);
+                        return false;
+                    }
+                }
+            })
+            .collect();
+
+        assert!(results.iter().all(|&x| x), "One or more match failed.");
     }
 }

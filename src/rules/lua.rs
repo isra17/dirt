@@ -35,7 +35,20 @@ impl Rule for LuaRule {
 
     fn verify(&self, result: &EmuEffects) -> bool {
         println!("In verify!");
-        return false;
+        // Push callback function.
+        let lua_ref = self.lua.upgrade().unwrap();
+        let mut lua = lua_ref.borrow_mut();
+        lua.raw_geti(lua::REGISTRYINDEX, self.fn_ref.value() as i64);
+
+        lua.push_integer(result.return_value as i64);
+
+        let r = lua.pcall(1, 1, 0);
+
+        if r.is_err() {
+            panic!("{:?}", pop_error(&mut lua));
+        }
+
+        return lua.to_bool(-1);
     }
 }
 
@@ -52,9 +65,17 @@ fn lua_rule(lua: &mut ::lua::State) -> i32 {
         panic!("Dirt userdata is null");
     }
 
+    lua.pop(1);
     let lua_rules: &mut LuaRules = unsafe { &mut *lua_rules_udata };
     return lua_rules.on_rule(lua);
 }
+
+fn pop_error(lua: &mut ::lua::State) -> Error {
+    let err = Error::LuaError(lua.to_str(-1).unwrap().to_owned());
+    lua.pop(1);
+    return err;
+}
+
 
 impl LuaRules {
     pub fn new() -> Box<LuaRules> {
@@ -84,14 +105,15 @@ impl LuaRules {
     }
 
     pub fn load(&mut self, path: &Path) -> Result<(), Error> {
-        let r = self.lua.borrow_mut().load_file(path.to_str().unwrap());
+        let mut lua = self.lua.borrow_mut();
+        let r = lua.load_file(path.to_str().unwrap());
         if r.is_err() {
-            return Err(self.pop_error());
+            return Err(pop_error(&mut lua));
         }
 
-        let r = self.lua.borrow_mut().pcall(0, 0, 0);
+        let r = lua.pcall(0, 0, 0);
         if r.is_err() {
-            return Err(self.pop_error());
+            return Err(pop_error(&mut lua));
         }
 
         return Ok(());
@@ -109,22 +131,17 @@ impl LuaRules {
         return &self.candidates_rules;
     }
 
-    fn pop_error(&mut self) -> Error {
-        let mut lua = self.lua.borrow_mut();
-        let err = Error::LuaError(lua.to_str(-1).unwrap().to_owned());
-        lua.pop(1);
-        return err;
-    }
-
     fn on_rule(&mut self, lua: &mut ::lua::State) -> i32 {
         let name = lua.to_str(1)
             .unwrap()
             .to_owned();
+        lua.pop(1);
         let top = lua.get_top();
         let mut args: Vec<Rc<DataType>> = Vec::new();
-        for i in 2..top - 1 {
-            let arg = lua.to_str(i).unwrap();
-            args.push(Rc::new(StringData::new(arg)));
+        for i in 2..top {
+            let arg = lua.to_str(i).unwrap().to_owned();
+            args.push(Rc::new(StringData::new(&arg)));
+            lua.pop(1);
         }
         let fn_ref = lua.reference(lua::REGISTRYINDEX);
 

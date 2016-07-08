@@ -13,6 +13,7 @@ pub trait DataType {
                       -> Result<u64, Error>;
 }
 
+#[derive(Debug)]
 pub struct StringData {
     value: String,
 }

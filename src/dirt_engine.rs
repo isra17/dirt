@@ -1,5 +1,6 @@
 use emu;
 use emu::emu_engine::EmuEngine;
+use rules::Rule;
 use rules::RuleSet;
 
 #[derive(Debug)]
@@ -18,7 +19,7 @@ pub struct DirtEngine {
     /// Emulation engine initialized for the target binary.
     emu: EmuEngine,
     /// Rules loaded in the current context.
-    ruleset: RuleSet,
+    ruleset: Box<RuleSet>,
 }
 
 /// TargetInfo contains the information about a function to be sent and
@@ -44,7 +45,7 @@ enum CallError {
 
 impl DirtEngine {
     /// Create a new DirtEngine given an emulation engine and ruleset.
-    pub fn new(emu: EmuEngine, ruleset: RuleSet) -> DirtEngine {
+    pub fn new(emu: EmuEngine, ruleset: Box<RuleSet>) -> DirtEngine {
         return DirtEngine {
             emu: emu,
             ruleset: ruleset,
@@ -64,7 +65,7 @@ impl DirtEngine {
                 .map(|rule| {
                     return match self.emu.call(target, &rule.args) {
                         Ok(call_effects) => {
-                            if (rule.verifier)(&call_effects) {
+                            if rule.verify(&call_effects) {
                                 Ok(())
                             } else {
                                 Err(CallError::NotMatched)

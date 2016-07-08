@@ -7,7 +7,7 @@ pub use self::lua::LuaRules as RuleSet;
 use std::fs;
 use std::path::Path;
 
-pub fn load_all(path: &Path) -> RuleSet {
+pub fn load_all(path: &Path) -> Box<RuleSet> {
     let mut lua = RuleSet::new();
 
     // List lua rules files in rules folder.

@@ -1,10 +1,8 @@
 use emu::emu_engine::EmuEffects;
 use emu::args::EmuArgs;
 
-pub type Verifier = Fn(&EmuEffects) -> bool;
-
-pub struct Rule {
-    pub name: String,
-    pub args: EmuArgs,
-    pub verifier: Box<Verifier>,
+pub trait Rule {
+    fn name<'a>(&'a self) -> &'a str;
+    fn args<'a>(&'a self) -> &'a EmuArgs;
+    fn verify(&self, result: &EmuEffects) -> bool;
 }

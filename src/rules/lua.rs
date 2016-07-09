@@ -17,14 +17,14 @@ pub enum Error {
     NotImplemented,
 }
 
-pub struct LuaEffects<'s> {
-    pub effects: &'s EmuEffects<'s>,
-}
-
 fn lua_effect_return_value(lua: &mut ::lua::State) -> i32 {
     let value = {
+        let udata = lua.check_userdata(1, "EmuEffects");
+        if udata.is_null() {
+            panic!("First arg must be EmuEffects");
+        }
         let effects: &mut Option<&EmuEffects> =
-            unsafe { lua.to_userdata_typed(1) }.unwrap();
+            &mut unsafe { *(udata as *mut Option<&EmuEffects>) };
 
         effects
             .expect("EmuEffects should not be used outside of test validation")

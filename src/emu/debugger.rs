@@ -31,7 +31,7 @@ extern "C" fn on_code(handle: unicorn::uc_handle,
         Err(e) => format!("<err: {:?}", e),
     };
 
-    // println!("{}", inst_fmt);
+    println!("{}", inst_fmt);
 }
 
 extern "C" fn on_mem(_: unicorn::uc_handle,

@@ -9,8 +9,8 @@ function i32(i)
   end
 end
 
-rule("atoi", "10", function (r) return i32(r) == 10 end)
-rule("atoi", "-123", function (r) return i32(r) == -123 end)
+Dirt.rule("atoi", "10", function (r) return i32(r:return_value()) == 10 end)
+Dirt.rule("atoi", "-123", function (r) return i32(r:return_value()) == -123 end)
 
-rule("sprintf", --[[buf(0x10),--]] "AA %s CC", "BB",
+Dirt.rule("sprintf", --[[buf(0x10),--]] "AA %s CC", "BB",
      function (r) return false end)

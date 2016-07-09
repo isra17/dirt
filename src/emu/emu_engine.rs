@@ -24,12 +24,12 @@ impl EmuEngine {
                      0x1000,
                      ::unicorn::unicorn_const::PROT_EXEC)
             .expect("Failed to map code sentinel");
-        let debugger = try!(Debugger::attach(vmstate.engine.clone()));
+        // let debugger = try!(Debugger::attach(vmstate.engine.clone()));
         try!(vmstate.init());
 
         return Ok(EmuEngine {
             vmstate: vmstate,
-            debugger: Some(debugger),
+            debugger: None, // Some(debugger),
         });
     }
 

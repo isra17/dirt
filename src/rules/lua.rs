@@ -17,6 +17,23 @@ pub enum Error {
     NotImplemented,
 }
 
+pub struct LuaEffects<'s> {
+    pub effects: &'s EmuEffects<'s>,
+}
+
+fn lua_effect_return_value(lua: &mut ::lua::State) -> i32 {
+    let value = {
+        let effects: &mut Option<&EmuEffects> =
+            unsafe { lua.to_userdata_typed(1) }.unwrap();
+
+        effects
+            .expect("EmuEffects should not be used outside of test validation")
+            .return_value
+    };
+    lua.push_integer(value as i64);
+    return 1;
+}
+
 pub struct LuaRule {
     pub lua: Weak<RefCell<::lua::State>>,
     pub fn_ref: ::lua::Reference,
@@ -33,20 +50,29 @@ impl Rule for LuaRule {
         return &self.args;
     }
 
-    fn verify(&self, result: &EmuEffects) -> bool {
-        println!("In verify!");
-        // Push callback function.
+    fn verify(&self, effects: &EmuEffects) -> bool {
         let lua_ref = self.lua.upgrade().unwrap();
         let mut lua = lua_ref.borrow_mut();
         lua.raw_geti(lua::REGISTRYINDEX, self.fn_ref.value() as i64);
 
-        lua.push_integer(result.return_value as i64);
+        let lua_effects_ptr: *mut Option<&EmuEffects> =
+            lua.new_userdata_typed();
+        if lua_effects_ptr.is_null() {
+            panic!("Fail to create LuaEffects");
+        }
+
+        lua.set_metatable_from_registry("EmuEffects");
+
+        let lua_effects = unsafe { &mut *lua_effects_ptr };
+        *lua_effects = Some(effects);
+
         let r = lua.pcall(1, 1, 0);
 
         if r.is_err() {
             panic!("{:?}", pop_error(&mut lua));
         }
 
+        *lua_effects = None;
         return lua.to_bool(-1);
     }
 }
@@ -86,8 +112,18 @@ impl LuaRules {
         // Interface all the helpers functions.
         {
             let mut lua = lua_rules.lua.borrow_mut();
-            lua.push_fn(lua_func!(lua_rule));
-            lua.set_global("rule");
+            let dirt_fns = &[("rule", lua_func!(lua_rule))];
+            lua.new_lib(dirt_fns);
+            lua.set_global("Dirt");
+
+            let effects_fns = &[("return_value",
+                                 lua_func!(lua_effect_return_value))];
+            lua.new_metatable("EmuEffects");
+            lua.new_lib_table(effects_fns);
+            lua.set_fns(effects_fns, 0);
+            lua.set_field(-2, "__index");
+
+            lua.set_global("return_value");
 
             lua.load_library(::lua::Library::Base);
             lua.load_library(::lua::Library::Io);

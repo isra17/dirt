@@ -37,4 +37,8 @@ impl PushableArgs {
     pub fn pushed_args(&self) -> Vec<u64> {
         return self.argv.iter().map(|&PushableArg(_, v)| v).collect();
     }
+
+    pub fn nth(&self, n: usize) -> u64 {
+        return self.argv[n].1;
+    }
 }

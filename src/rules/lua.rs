@@ -1,5 +1,5 @@
 use emu::args::EmuArgs;
-use emu::datatypes::{DataType, StringData};
+use emu::datatypes::{BufData, DataType, StringData};
 use emu::emu_engine::EmuEffects;
 use lua;
 use std::path::Path;
@@ -31,6 +31,45 @@ fn lua_effect_return_value(lua: &mut ::lua::State) -> i32 {
             .return_value
     };
     lua.push_integer(value as i64);
+    return 1;
+}
+
+fn lua_effect_arg(lua: &mut ::lua::State) -> i32 {
+    let n = lua.to_integer(1);
+    let value = {
+        let udata = lua.check_userdata(1, "EmuEffects");
+        if udata.is_null() {
+            panic!("First arg must be EmuEffects");
+        }
+        let effects: &mut Option<&EmuEffects> =
+            &mut unsafe { *(udata as *mut Option<&EmuEffects>) };
+
+        effects
+            .expect("EmuEffects should not be used outside of test validation")
+            .args.nth(n as usize)
+    };
+    lua.push_integer(value as i64);
+    return 1;
+}
+
+fn lua_effect_str(lua: &mut ::lua::State) -> i32 {
+    let addr = lua.to_integer(2);
+    let value = {
+        let udata = lua.check_userdata(1, "EmuEffects");
+        if udata.is_null() {
+            panic!("First arg must be EmuEffects");
+        }
+        let effects: &mut Option<&EmuEffects> =
+            &mut unsafe { *(udata as *mut Option<&EmuEffects>) };
+
+        effects
+            .expect("EmuEffects should not be used outside of test validation")
+            .vmstate.read_str(addr as u64)
+    };
+    match value {
+        Ok(s) => lua.push_string(&s),
+        Err(_) => lua.push_string(""),
+    }
     return 1;
 }
 
@@ -95,6 +134,20 @@ fn lua_rule(lua: &mut ::lua::State) -> i32 {
     return lua_rules.on_rule(lua);
 }
 
+struct LuaBufData(u64);
+
+fn lua_buf(lua: &mut ::lua::State) -> i32 {
+    let size = lua.to_integer(-1);
+    let buf: *mut LuaBufData = lua.new_userdata_typed();
+    if buf.is_null() {
+        panic!("Lua error");
+    }
+    lua.set_metatable_from_registry("BufData");
+
+    (unsafe { &mut *buf }).0 = size as u64;
+    return 1;
+}
+
 fn pop_error(lua: &mut ::lua::State) -> Error {
     let err = Error::LuaError(lua.to_str(-1).unwrap().to_owned());
     lua.pop(1);
@@ -112,18 +165,21 @@ impl LuaRules {
         // Interface all the helpers functions.
         {
             let mut lua = lua_rules.lua.borrow_mut();
-            let dirt_fns = &[("rule", lua_func!(lua_rule))];
+            let dirt_fns = &[("rule", lua_func!(lua_rule)),
+                             ("Buf", lua_func!(lua_buf))];
             lua.new_lib(dirt_fns);
             lua.set_global("Dirt");
 
             let effects_fns = &[("return_value",
-                                 lua_func!(lua_effect_return_value))];
+                                 lua_func!(lua_effect_return_value)),
+                                ("arg", lua_func!(lua_effect_arg)),
+                                ("str", lua_func!(lua_effect_str))];
             lua.new_metatable("EmuEffects");
             lua.new_lib_table(effects_fns);
             lua.set_fns(effects_fns, 0);
             lua.set_field(-2, "__index");
 
-            lua.set_global("return_value");
+            lua.new_metatable("BufData");
 
             lua.load_library(::lua::Library::Base);
             lua.load_library(::lua::Library::Io);
@@ -177,9 +233,17 @@ impl LuaRules {
         let top = lua.get_top();
         let mut args: Vec<Rc<DataType>> = Vec::new();
         for i in 2..top {
-            let arg = lua.to_str(i).unwrap().to_owned();
-            args.push(Rc::new(StringData::new(&arg)));
-            lua.pop(1);
+            if lua.is_string(i) {
+                let arg = lua.to_str(i).unwrap().to_owned();
+                args.push(Rc::new(StringData::new(&arg)));
+                lua.pop(1);
+            } else if let Some(&mut LuaBufData(size)) = unsafe {
+                lua.test_userdata_typed(i, "BufData")
+            } {
+                args.push(Rc::new(BufData::new(size)));
+            } else {
+                panic!("Unsupported type: {}", lua.typename_at(i));
+            }
         }
         let fn_ref = lua.reference(lua::REGISTRYINDEX);
 

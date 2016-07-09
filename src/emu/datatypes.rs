@@ -31,3 +31,24 @@ impl StringData {
         return StringData { value: String::from(value) };
     }
 }
+
+#[derive(Debug)]
+pub struct BufData {
+    size: u64,
+}
+
+impl DataType for BufData {
+    fn pushable_value(&self,
+                      data_writer: &mut DataWriter)
+                      -> Result<u64, Error> {
+        let mut data = Vec::with_capacity(self.size as usize);
+        data.resize(self.size as usize, 0);
+        return data_writer.write_data(&data);
+    }
+}
+
+impl BufData {
+    pub fn new(size: u64) -> BufData {
+        return BufData { size: size };
+    }
+}

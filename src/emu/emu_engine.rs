@@ -54,7 +54,6 @@ impl EmuEngine {
     }
 
     fn call_and_return(&self, ip: u64) -> Result<(), Error> {
-        println!("Calling 0x{:016x}", ip);
         try!(self.vmstate.set_call_return(emu::CODE_SENTINEL));
         return self.vmstate
             .engine

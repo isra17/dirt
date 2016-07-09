@@ -260,4 +260,11 @@ impl<'a> DataWriter<'a> {
         self.write_ptr = try!(self.vmstate.write_str(self.write_ptr, data));
         return Ok(str_ptr);
     }
+
+    pub fn write_data(&mut self, data: &[u8]) -> Result<u64, Error> {
+        let data_ptr = self.write_ptr;
+        try!(self.vmstate.engine.mem_write(self.write_ptr, &data));
+        self.write_ptr += data.len() as u64;
+        return Ok(data_ptr);
+    }
 }

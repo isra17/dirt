@@ -52,3 +52,12 @@ impl BufData {
         return BufData { size: size };
     }
 }
+
+#[derive(Debug)]
+pub struct IntegerData(pub u64);
+
+impl DataType for IntegerData {
+    fn pushable_value(&self, _: &mut DataWriter) -> Result<u64, Error> {
+        return Ok(self.0);
+    }
+}

@@ -1,5 +1,5 @@
 use emu::args::EmuArgs;
-use emu::datatypes::{BufData, DataType, StringData};
+use emu::datatypes::{BufData, DataType, IntegerData, StringData};
 use emu::emu_engine::EmuEffects;
 use lua;
 use std::path::Path;
@@ -233,7 +233,10 @@ impl LuaRules {
         let top = lua.get_top();
         let mut args: Vec<Rc<DataType>> = Vec::new();
         for i in 2..top {
-            if lua.is_string(i) {
+            if lua.is_integer(i) {
+                let arg = lua.to_integer(i) as u64;
+                args.push(Rc::new(IntegerData(arg)));
+            } else if lua.is_string(i) {
                 let arg = lua.to_str(i).unwrap().to_owned();
                 args.push(Rc::new(StringData::new(&arg)));
                 lua.pop(1);

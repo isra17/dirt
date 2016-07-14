@@ -27,7 +27,7 @@ CPP_CANDIDATE(std::string, std_string_string_fill, string(n,c))
 (std::string *self, size_t n, char c) { return new (self)std::string(n, c); }
 
 CPP_CANDIDATE(std::string, std_string_string_append_cstring, append(s))
-(std::string *self, char* s) { return new self->append(s); }
+(std::string *self, char* s) { return &self->append(s); }
 
 }
 

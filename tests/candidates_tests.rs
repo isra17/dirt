@@ -6,6 +6,8 @@ use dirt::{emu, rules};
 use dirt::dirt_engine::{DirtEngine, TargetInfo};
 use std::path::Path;
 
+struct Candidate(String, u64);
+
 #[test]
 fn tests_all_candidates() {
     use std::fs;
@@ -24,8 +26,21 @@ fn tests_all_candidates() {
 
         let tests_iter = candidate.objects()
             .into_iter()
-            .filter(|o| o.name.starts_with("test_"))
-            .map(|o| candidate.read_str(o.value));
+            .filter(|o| {
+                o.name.starts_with("test_") && !o.name.ends_with("_fn")
+            })
+            .map(|o| {
+                let test_name = candidate.read_str(o.value).unwrap();
+                Candidate(test_name.clone(),
+                          candidate.get_symbol(&format!("{}{}",
+                                                   &o.name[..o.name.len() -
+                                                             6],
+                                                   "fn"))
+                              .unwrap_or_else(|| {
+                                  candidate.get_symbol(&test_name).unwrap()
+                              })
+                              .value)
+            });
 
         // Create the emulation engine.
         let emu = emu::from_elf(path)
@@ -37,10 +52,8 @@ fn tests_all_candidates() {
 
         // Iterate through all test_ symbols and run the tested function
         // against the DIRT engine.
-        let results: Vec<bool> = tests_iter.map(|test| {
-                let fn_name = test.unwrap();
-                let fva = candidate.get_symbol(fn_name.as_str()).unwrap().value;
-
+        let results: Vec<bool> = tests_iter.map(|Candidate(fn_name, fva)| {
+                println!("{}: {:x}", fn_name, fva);
                 match dirt.identify_function(&TargetInfo {
                     fva: fva,
                     cc: dirt.default_cc(),

@@ -34,41 +34,39 @@ fn lua_effect_return_value(lua: &mut ::lua::State) -> i32 {
     return 1;
 }
 
+fn lua_effect(lua: &mut ::lua::State) -> &EmuEffects {
+    let udata = lua.check_userdata(1, "EmuEffects");
+    if udata.is_null() {
+        panic!("First arg must be EmuEffects");
+    }
+    let effects: &mut Option<&EmuEffects> =
+        &mut unsafe { *(udata as *mut Option<&EmuEffects>) };
+
+    return effects
+            .expect("EmuEffects should not be used outside of test validation");
+}
+
 fn lua_effect_arg(lua: &mut ::lua::State) -> i32 {
     let n = lua.to_integer(1);
-    let value = {
-        let udata = lua.check_userdata(1, "EmuEffects");
-        if udata.is_null() {
-            panic!("First arg must be EmuEffects");
-        }
-        let effects: &mut Option<&EmuEffects> =
-            &mut unsafe { *(udata as *mut Option<&EmuEffects>) };
-
-        effects
-            .expect("EmuEffects should not be used outside of test validation")
-            .args.nth(n as usize)
-    };
+    let value = lua_effect(lua).args.nth(n as usize);
     lua.push_integer(value as i64);
     return 1;
 }
 
 fn lua_effect_str(lua: &mut ::lua::State) -> i32 {
     let addr = lua.to_integer(2);
-    let value = {
-        let udata = lua.check_userdata(1, "EmuEffects");
-        if udata.is_null() {
-            panic!("First arg must be EmuEffects");
-        }
-        let effects: &mut Option<&EmuEffects> =
-            &mut unsafe { *(udata as *mut Option<&EmuEffects>) };
-
-        effects
-            .expect("EmuEffects should not be used outside of test validation")
-            .vmstate.read_str(addr as u64)
-    };
-    match value {
+    match lua_effect(lua).vmstate.read_str(addr as u64) {
         Ok(s) => lua.push_string(&s),
         Err(_) => lua.push_string(""),
+    }
+    return 1;
+}
+
+fn lua_effect_usize(lua: &mut ::lua::State) -> i32 {
+    let addr = lua.to_integer(2);
+    match lua_effect(lua).vmstate.read_usize(addr as u64) {
+        Ok(value) => lua.push_integer(value as i64),
+        Err(_) => lua.push_nil(),
     }
     return 1;
 }
@@ -173,7 +171,8 @@ impl LuaRules {
             let effects_fns = &[("return_value",
                                  lua_func!(lua_effect_return_value)),
                                 ("arg", lua_func!(lua_effect_arg)),
-                                ("str", lua_func!(lua_effect_str))];
+                                ("str", lua_func!(lua_effect_str)),
+                                ("usize", lua_func!(lua_effect_usize))];
             lua.new_metatable("EmuEffects");
             lua.new_lib_table(effects_fns);
             lua.set_fns(effects_fns, 0);
@@ -183,6 +182,7 @@ impl LuaRules {
 
             lua.load_library(::lua::Library::Base);
             lua.load_library(::lua::Library::Io);
+            lua.load_library(::lua::Library::String);
         }
 
         // Register the LuaRules object to the lua internal registry for future

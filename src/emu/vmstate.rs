@@ -1,3 +1,4 @@
+use byteorder::{ByteOrder, LittleEndian};
 use emu;
 use emu::Error;
 use emu::args::PushableArgs;
@@ -209,6 +210,11 @@ impl VmState {
         return Ok(addr + data_buf.len() as u64);
     }
 
+    pub fn read_usize(&self, addr: u64) -> Result<u64, Error> {
+        // TODO: Make it arch independant.
+        return Ok(LittleEndian::read_u64(&try!(self.engine.mem_read(addr, 8))));
+    }
+
     /// Unlike unicorn.mem_map, this function keep track of the mapping
     /// and provide a reverse function to find mapping given a name.
     /// The mapping address and size must still be aligned.
@@ -240,7 +246,6 @@ impl VmState {
 
     fn native_pack(&self, n: u64) -> Vec<u8> {
         // TODO: Make it arch dependant.
-        use byteorder::{ByteOrder, LittleEndian};
         let mut packed = [0; 8];
         LittleEndian::write_u64(&mut packed, n);
         return packed.to_vec();

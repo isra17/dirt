@@ -1,10 +1,24 @@
 StdString = {}
-StdString.struct = {Dirt.Buf(0x10), Dirt.U, Dirt.U}
-StdString.new = function(str) return "" end
-StdString.from = function(r, addr) return {} end
+StdString.mt = {
+  __index = {
+    isEmpty = function(this)
+      return this.s:usize(this.a) == this.a + 0x10 and
+             this.s:str(this.s:usize(this.a)) == ""
+    end
+  }
+}
 
-Dirt.rule("std::string::__add",
-          StdString.new("AA"),
-          StdString.new("BB"),
-          function(r) return StdString.from(r, r:arg(0)).str == "AA BB" end)
+StdString.struct = {Dirt.Ptr, Dirt.U, Dirt.Buf(0x10)}
+
+StdString.new = function(str) return "" end
+
+StdString.from = function(s, addr)
+  local t = {s=s, a=addr}
+  setmetatable(t, StdString.mt)
+  return t;
+end
+
+Dirt.rule("std::string::string()",
+          Dirt.Buf(0x10),
+          function(s) return StdString.from(s, s:arg(0)):isEmpty() end)
 

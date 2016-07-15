@@ -102,14 +102,14 @@ impl Rule for LuaRule {
 
         let lua_effects = unsafe { &mut *lua_effects_ptr };
         *lua_effects = Some(effects);
-
         let r = lua.pcall(1, 1, 0);
+        *lua_effects = None;
 
         if r.is_err() {
-            panic!("{:?}", pop_error(&mut lua));
+            println!("{:?}", pop_error(&mut lua));
+            return false;
         }
 
-        *lua_effects = None;
         return lua.to_bool(-1);
     }
 }

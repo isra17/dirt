@@ -65,10 +65,17 @@ end
 
 Dirt.rule("std::string::string()",
           Dirt.Buf(StdString.sizeof),
+          "aa",
           function(s) return StdString.from(s, s:arg(0)):isEmpty() end)
 
 Dirt.rule("std::string::string(char*)",
+          Dirt.Buf(StdString.sizeof),
           "aa",
+          function(s) return StdString.from(s, s:arg(0)):str() == "aa" end)
+
+Dirt.rule("std::string::string(char*)",
+          Dirt.Buf(StdString.sizeof),
+          "aaaaaaaaaaaaaaaa",
           function(s) return StdString.from(s, s:arg(0)):str() == "aa" end)
 
 --[[

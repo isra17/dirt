@@ -11,6 +11,7 @@ struct Candidate(String, u64);
 #[test]
 fn tests_all_candidates() {
     use std::fs;
+    let mut any_failed = false;
 
     // List candidates in candidates folder.
     let paths = fs::read_dir("./candidates").unwrap();
@@ -53,7 +54,6 @@ fn tests_all_candidates() {
         // Iterate through all test_ symbols and run the tested function
         // against the DIRT engine.
         let results: Vec<bool> = tests_iter.map(|Candidate(fn_name, fva)| {
-                println!("{}: {:x}", fn_name, fva);
                 match dirt.identify_function(&TargetInfo {
                     fva: fva,
                     cc: dirt.default_cc(),
@@ -80,7 +80,7 @@ fn tests_all_candidates() {
                 }
             })
             .collect();
-
-        assert!(results.iter().all(|&x| x), "One or more match failed.");
+        any_failed = any_failed || results.iter().any(|&x| !x);
     }
+    assert!(!any_failed, "One or more match failed.");
 }

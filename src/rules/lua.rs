@@ -57,7 +57,7 @@ fn lua_effect_str(lua: &mut ::lua::State) -> i32 {
     let addr = lua.to_integer(2);
     match lua_effect(lua).vmstate.read_str(addr as u64) {
         Ok(s) => lua.push_string(&s),
-        Err(_) => lua.push_string(""),
+        Err(_) => lua.push_nil(),
     }
     return 1;
 }
@@ -232,21 +232,8 @@ impl LuaRules {
         lua.pop(1);
         let top = lua.get_top();
         let mut args: Vec<Rc<DataType>> = Vec::new();
-        for i in 2..top {
-            if lua.is_integer(i) {
-                let arg = lua.to_integer(i) as u64;
-                args.push(Rc::new(IntegerData(arg)));
-            } else if lua.is_string(i) {
-                let arg = lua.to_str(i).unwrap().to_owned();
-                args.push(Rc::new(StringData::new(&arg)));
-                lua.pop(1);
-            } else if let Some(&mut LuaBufData(size)) = unsafe {
-                lua.test_userdata_typed(i, "BufData")
-            } {
-                args.push(Rc::new(BufData::new(size)));
-            } else {
-                panic!("Unsupported type: {}", lua.typename_at(i));
-            }
+        for arg_n in 2..top {
+            args.push(self.parse_rule_argument(lua, arg_n));
         }
         let fn_ref = lua.reference(lua::REGISTRYINDEX);
 
@@ -260,5 +247,35 @@ impl LuaRules {
         self.add_rule(rule);
 
         return 0;
+    }
+
+    fn parse_rule_argument(&mut self,
+                           lua: &mut ::lua::State,
+                           arg_n: i32)
+                           -> Rc<DataType> {
+        if lua.is_integer(arg_n) {
+            let arg = lua.to_integer(arg_n) as u64;
+            return Rc::new(IntegerData(arg));
+        } else if lua.is_string(arg_n) {
+            let arg = lua.to_str(arg_n).unwrap().to_owned();
+            lua.pop(1);
+            return Rc::new(StringData::new(&arg));
+        } else if lua.is_table(arg_n) {
+            // Iterate on the table elements.
+            lua.push_nil();
+            while lua.next(arg_n) {
+                let mut table_args = Vec::new();
+                table_args.push(self.parse_rule_argument(lua, -1));
+                lua.pop(1);
+            }
+            lua.pop(1);
+            return Rc::new(IntegerData(0));
+        } else if let Some(&mut LuaBufData(size)) = unsafe {
+            lua.test_userdata_typed(arg_n, "BufData")
+        } {
+            return Rc::new(BufData::new(size));
+        } else {
+            panic!("Unsupported type: {}", lua.typename_at(arg_n));
+        }
     }
 }

@@ -41,10 +41,10 @@ function StdString.new(str)
   if str == "" then return Dirt.Buf(0x18) end
   if str:len() < 0x10 then
     local buf = Dirt.Buf(0x10, str)
-    return {Dirt.This(0x10), 0, buf}
+    return {Dirt.This(0x10), str:len(), buf}
   else
     local buf = Dirt.Buf(0x10, str)
-    return {Dirt.This(StdString.sizeof), 0, str:len(), buf}
+    return {Dirt.This(StdString.sizeof), str:len(), str:len(), 0, buf}
   end
 end
 
@@ -68,6 +68,11 @@ Dirt.rule("std::string::string()",
           "aa",
           function(s) return StdString.from(s, s:arg(0)):isEmpty() end)
 
+Dirt.rule("std::string::string()",
+          Dirt.Buf(StdString.sizeof),
+          StdString.new("aa"),
+          function(s) return StdString.from(s, s:arg(0)):isEmpty() end)
+
 Dirt.rule("std::string::string(char*)",
           Dirt.Buf(StdString.sizeof),
           "aa",
@@ -85,7 +90,7 @@ Dirt.rule("std::string::string(std::string*)",
           StdString.new("aa"),
           function(s) return StdString.from(s, s:arg(0)):str() == "aa" end)
 
-Dirt.rule("std::string::__add(std::string*)",
+Dirt.rule("std::string::append(char*)",
           StdString.new("aa"),
-          StdString.new("bb"),
-          function(s) return StdString.from(s, s:arg(0)):str() == "aabb" end)
+          "bbbb",
+          function(s) return StdString.from(s, s:arg(0)):str() == "aabbbb" end)

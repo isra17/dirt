@@ -173,7 +173,6 @@ pub struct LinuxEnv {
 
 impl Env for LinuxEnv {
     fn attach(&self, vmstate: &mut VmState) -> Rc<RefCell<Kernel>> {
-        println!("Hooking syscall");
         let kernel = Rc::new(RefCell::new(LinuxKernel {
             intr_hook: None,
             brk_ptr: emu::BRK_ADDR,

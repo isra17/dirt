@@ -75,11 +75,11 @@ impl DirtEngine {
             // result match its conditions.
             let call_result: Result<Vec<()>, CallError> = rules.iter()
                 .map(|rule| {
-                    println!("Calling {}({:?})", rule.name, rule.args);
-                    debugger.detach().expect("Failed to detach debugger");
-                    if rule.name == "std::string::string(char*)" && false {
-                        debugger.attach().expect("Failed to attach debugger");
-                    }
+                    // println!("Calling {}({:?})", rule.name, rule.args);
+                    // debugger.detach().expect("Failed to detach debugger");
+                    // if rule.name == "std::string::string(char*)" && false {
+                    //    debugger.attach().expect("Failed to attach debugger");
+                    // }
                     return match emu.call(target, &rule.args) {
                         Ok(call_effects) => {
                             if rule.verify(&call_effects) {

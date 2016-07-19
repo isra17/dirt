@@ -22,6 +22,7 @@ fn tests_all_candidates() {
     for dir_entry in filepaths {
         let dir_path = dir_entry.unwrap().path();
         let path = dir_path.as_path();
+        println!("Testing {:?}", path);
         // Load and parse the candidate to extract the functions list to test.
         let candidate = bin_file::load(path).unwrap();
 
@@ -48,16 +49,14 @@ fn tests_all_candidates() {
             .expect("Failed to create emulator from ELF");
         // Load the ruleset.
         let ruleset = rules::load_all(Path::new("./rules"));
-        // Create en DIRT engine.
-        let dirt = DirtEngine::new(emu, ruleset);
+        // Create the DIRT engine.
+        let mut dirt = DirtEngine::new(emu, ruleset);
 
         // Iterate through all test_ symbols and run the tested function
         // against the DIRT engine.
         let results: Vec<bool> = tests_iter.map(|Candidate(fn_name, fva)| {
-                match dirt.identify_function(&TargetInfo {
-                    fva: fva,
-                    cc: dirt.default_cc(),
-                }) {
+                let cc = dirt.default_cc();
+                match dirt.identify_function(&TargetInfo { fva: fva, cc: cc }) {
                     Ok(Some(func_info)) => {
                         if func_info.name == fn_name {
                             println!("{}: Ok!", fn_name);

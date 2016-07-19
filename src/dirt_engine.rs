@@ -1,11 +1,18 @@
 use emu;
 use emu::emu_engine::EmuEngine;
+use emu::debugger::Debugger;
 use rules::Rule;
 use rules::RuleSet;
 
 #[derive(Debug)]
 pub enum Error {
     EmuError(emu::Error),
+}
+
+impl ::std::convert::From<emu::Error> for Error {
+    fn from(e: emu::Error) -> Error {
+        return Error::EmuError(e);
+    }
 }
 
 pub enum CallingConvention {
@@ -20,6 +27,7 @@ pub struct DirtEngine {
     emu: EmuEngine,
     /// Rules loaded in the current context.
     ruleset: Box<RuleSet>,
+    debugger: Debugger,
 }
 
 /// TargetInfo contains the information about a function to be sent and
@@ -46,16 +54,20 @@ enum CallError {
 impl DirtEngine {
     /// Create a new DirtEngine given an emulation engine and ruleset.
     pub fn new(emu: EmuEngine, ruleset: Box<RuleSet>) -> DirtEngine {
+        let debugger_engine = emu.vmstate.engine.clone();
         return DirtEngine {
             emu: emu,
             ruleset: ruleset,
+            debugger: Debugger::new(debugger_engine),
         };
     }
 
     /// Identify a single function.
-    pub fn identify_function(&self,
+    pub fn identify_function(&mut self,
                              target: &TargetInfo)
                              -> Result<Option<FunctionInfo>, Error> {
+        let debugger = &mut self.debugger;
+        let emu = &self.emu;
         // Iterate through each candidate's rules.
         for (candidate_name, rules) in self.ruleset.candidates() {
             // For each target rules, get a list of the input argument to be
@@ -63,7 +75,12 @@ impl DirtEngine {
             // result match its conditions.
             let call_result: Result<Vec<()>, CallError> = rules.iter()
                 .map(|rule| {
-                    return match self.emu.call(target, &rule.args) {
+                    println!("Calling {}({:?})", rule.name, rule.args);
+                    debugger.detach().expect("Failed to detach debugger");
+                    if rule.name == "std::string::string(char*)" && false {
+                        debugger.attach().expect("Failed to attach debugger");
+                    }
+                    return match emu.call(target, &rule.args) {
                         Ok(call_effects) => {
                             if rule.verify(&call_effects) {
                                 Ok(())

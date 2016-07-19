@@ -1,5 +1,6 @@
 use emu::args::EmuArgs;
-use emu::datatypes::{BufData, DataType, IntegerData, StringData};
+use emu::datatypes::{BufData, CompositeData, DataType, IntegerData,
+                     StringData, ThisOffsetData};
 use emu::emu_engine::EmuEffects;
 use lua;
 use std::path::Path;
@@ -132,17 +133,45 @@ fn lua_rule(lua: &mut ::lua::State) -> i32 {
     return lua_rules.on_rule(lua);
 }
 
-struct LuaBufData(u64);
+struct LuaBufData(u64, Option<String>);
 
 fn lua_buf(lua: &mut ::lua::State) -> i32 {
-    let size = lua.to_integer(-1);
+    let size = lua.to_integer(1);
     let buf: *mut LuaBufData = lua.new_userdata_typed();
     if buf.is_null() {
         panic!("Lua error");
     }
     lua.set_metatable_from_registry("BufData");
 
-    (unsafe { &mut *buf }).0 = size as u64;
+    let data = if lua.is_string(2) {
+        let string = lua.to_str(2).unwrap().to_owned();
+        lua.pop(1);
+        Some(string)
+    } else {
+        None
+    };
+
+    unsafe { ::std::ptr::write(buf, LuaBufData(size as u64, data)) };
+    return 1;
+}
+
+fn lua_buf_gc(lua: &mut ::lua::State) -> i32 {
+    let v = lua.check_userdata(1, "BufData") as *mut LuaBufData;
+    unsafe { ::std::ptr::drop_in_place(v) };
+    return 0;
+}
+
+struct LuaThisData(u64);
+
+fn lua_this(lua: &mut ::lua::State) -> i32 {
+    let offset = lua.to_integer(-1);
+    let buf: *mut LuaThisData = lua.new_userdata_typed();
+    if buf.is_null() {
+        panic!("Lua error");
+    }
+    lua.set_metatable_from_registry("ThisData");
+
+    (unsafe { &mut *buf }).0 = offset as u64;
     return 1;
 }
 
@@ -164,7 +193,8 @@ impl LuaRules {
         {
             let mut lua = lua_rules.lua.borrow_mut();
             let dirt_fns = &[("rule", lua_func!(lua_rule)),
-                             ("Buf", lua_func!(lua_buf))];
+                             ("Buf", lua_func!(lua_buf)),
+                             ("This", lua_func!(lua_this))];
             lua.new_lib(dirt_fns);
             lua.set_global("Dirt");
 
@@ -179,6 +209,10 @@ impl LuaRules {
             lua.set_field(-2, "__index");
 
             lua.new_metatable("BufData");
+            lua.push_fn(lua_func!(lua_buf_gc));
+            lua.set_field(-2, "__gc");
+
+            lua.new_metatable("ThisData");
 
             lua.load_library(::lua::Library::Base);
             lua.load_library(::lua::Library::Io);
@@ -256,26 +290,38 @@ impl LuaRules {
         if lua.is_integer(arg_n) {
             let arg = lua.to_integer(arg_n) as u64;
             return Rc::new(IntegerData(arg));
-        } else if lua.is_string(arg_n) {
+        }
+        if lua.is_string(arg_n) {
             let arg = lua.to_str(arg_n).unwrap().to_owned();
             lua.pop(1);
             return Rc::new(StringData::new(&arg));
-        } else if lua.is_table(arg_n) {
+        }
+        if lua.is_table(arg_n) {
             // Iterate on the table elements.
+            let mut table_args = Vec::new();
             lua.push_nil();
             while lua.next(arg_n) {
-                let mut table_args = Vec::new();
                 table_args.push(self.parse_rule_argument(lua, -1));
                 lua.pop(1);
             }
-            lua.pop(1);
-            return Rc::new(IntegerData(0));
-        } else if let Some(&mut LuaBufData(size)) = unsafe {
-            lua.test_userdata_typed(arg_n, "BufData")
-        } {
-            return Rc::new(BufData::new(size));
-        } else {
-            panic!("Unsupported type: {}", lua.typename_at(arg_n));
+            return Rc::new(CompositeData::new(table_args));
         }
+        {
+            if let Some(&mut LuaBufData(size, ref data)) = unsafe {
+                lua.test_userdata_typed(arg_n, "BufData")
+            } {
+                return Rc::new(BufData::new(size,
+                                            data.clone().map(|s| s.into())));
+            }
+        }
+        {
+            if let Some(&mut LuaThisData(offset)) = unsafe {
+                lua.test_userdata_typed(arg_n, "ThisData")
+            } {
+                return Rc::new(ThisOffsetData(offset));
+            }
+        }
+
+        panic!("Unsupported type: {}", lua.typename_at(arg_n));
     }
 }

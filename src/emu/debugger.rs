@@ -1,65 +1,93 @@
 use capstone;
 use emu::Error;
 use std::rc::Rc;
+use std::cell::RefCell;
 use unicorn;
-use unicorn::unicorn_const::HookType;
+use unicorn::unicorn_const::{CodeHookType, MemHookType};
 
 pub struct Debugger {
-    code_hook: unicorn::uc_hook,
-    mem_hook: unicorn::uc_hook,
-    engine: Rc<unicorn::Unicorn>,
+    code_hook: Option<unicorn::uc_hook>,
+    mem_hook: Option<unicorn::uc_hook>,
+    engine: Rc<RefCell<unicorn::Unicorn>>,
 }
 
-extern "C" fn on_code(handle: unicorn::uc_handle,
-                      address: u64,
-                      size: u32,
-                      _: *mut u64) {
-    let emu = unsafe { unicorn::UnicornHandle::new(handle) };
-    let cs = capstone::Capstone::new(capstone::CsArch::ARCH_X86,
-                                     capstone::CsMode::MODE_64)
-        .expect("Failed to init capstone");
-    let code = emu.mem_read(address, size as usize)
-        .expect("Failed to read code memory");
-
-    let inst_fmt = match cs.disasm(&code, address, 1) {
-        Ok(insts) => {
-            match insts.iter().next() {
-                Some(inst) => format!("{}", inst),
-                None => String::from("<none>"),
-            }
-        }
-        Err(e) => format!("<err: {:?}", e),
-    };
-
-    println!("{}", inst_fmt);
-}
-
-extern "C" fn on_mem(_: unicorn::uc_handle,
-                     mem_type: unicorn::unicorn_const::MemType,
-                     address: u64,
-                     size: i32,
-                     value: i64,
-                     _: *mut u64) {
-    println!("{:?} - 0x{:016x}: {} [{}]", mem_type, address, value, size);
+pub fn attach(engine: Rc<RefCell<unicorn::Unicorn>>) -> Result<Debugger, Error> {
+    let mut debugger = Debugger::new(engine);
+    return debugger.attach().and(Ok(debugger));
 }
 
 impl Debugger {
-    pub fn attach(engine: Rc<unicorn::Unicorn>) -> Result<Debugger, Error> {
-        let code_hook =
-            try!(engine.add_code_hook(HookType::CODE, 1, 0, on_code));
-        let mem_hook =
-            try!(engine.add_mem_hook(HookType::MEM_READ_PROT, 1, 0, on_mem));
-
-        return Ok(Debugger {
-            code_hook: code_hook,
-            mem_hook: mem_hook,
+    pub fn new(engine: Rc<RefCell<unicorn::Unicorn>>) -> Debugger {
+        return Debugger {
+            code_hook: None,
+            mem_hook: None,
             engine: engine,
-        });
+        };
     }
 
-    pub fn detach(self) -> Result<(), Error> {
-        try!(self.engine.remove_hook(self.code_hook));
-        try!(self.engine.remove_hook(self.mem_hook));
+    pub fn attach(&mut self) -> Result<(), Error> {
+        if let Some(_) = self.code_hook {
+            return Ok(());
+        }
+
+        self.code_hook = Some(try!(self.engine
+            .borrow_mut()
+            .add_code_hook(CodeHookType::CODE,
+                           1,
+                           0,
+                           |engine, address, size| {
+                               Debugger::on_code(engine, address, size)
+                           })));
+        self.mem_hook = Some(try!(self.engine
+            .borrow_mut()
+            .add_mem_hook(MemHookType::MEM_INVALID,
+                          1,
+                          0,
+                          |engine, mem_type, address, size, value| {
+                Debugger::on_mem(engine, mem_type, address, size, value)
+            })));
         return Ok(());
+    }
+
+    pub fn detach(&mut self) -> Result<(), Error> {
+        let mut engine = self.engine.borrow_mut();
+        if let Some(code_hook) = self.code_hook {
+            try!(engine.remove_hook(code_hook));
+            self.code_hook = None;
+        }
+        if let Some(mem_hook) = self.mem_hook {
+            try!(engine.remove_hook(mem_hook));
+            self.mem_hook = None;
+        }
+        return Ok(());
+    }
+
+    fn on_code(engine: &unicorn::Unicorn, address: u64, size: u32) {
+        let cs = capstone::Capstone::new(capstone::CsArch::ARCH_X86,
+                                         capstone::CsMode::MODE_64)
+            .expect("Failed to init capstone");
+        let code = engine.mem_read(address, size as usize)
+            .expect("Failed to read code memory");
+
+        let inst_fmt = match cs.disasm(&code, address, 1) {
+            Ok(insts) => {
+                match insts.iter().next() {
+                    Some(inst) => format!("{}", inst),
+                    None => String::from("<none>"),
+                }
+            }
+            Err(e) => format!("<err: {:?}", e),
+        };
+
+        println!("{}", inst_fmt);
+    }
+    fn on_mem(_: &unicorn::Unicorn,
+              mem_type: unicorn::unicorn_const::MemType,
+              address: u64,
+              size: usize,
+              value: i64)
+              -> bool {
+        println!("{:?} - 0x{:016x}: {} [{}]", mem_type, address, value, size);
+        return false;
     }
 }

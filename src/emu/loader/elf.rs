@@ -4,6 +4,7 @@ use emu::object_info::MemMap;
 use emu::vmstate::VmState;
 use elf;
 use std::io;
+use std::cell::RefCell;
 use std::fs::File;
 use std::path::Path;
 use std::rc::Rc;
@@ -55,9 +56,10 @@ pub fn load(path: &Path) -> Result<VmState, Error> {
 
     let elf_file = try!(elf::File::open_path(path));
 
-    let emu = Rc::new(match try!(Arch::new(elf_file.ehdr.machine)) {
+    let emu = Rc::new(RefCell::new(match try!(Arch::new(elf_file.ehdr
+        .machine)) {
         Arch(arch, mode) => try!(unicorn::Unicorn::new(arch, mode)),
-    });
+    }));
 
     let mut vmstate = VmState::new(emu.clone());
 
@@ -92,7 +94,8 @@ pub fn load(path: &Path) -> Result<VmState, Error> {
                 format!("Failed to read segment content: {:?}", phdr)
             }));
 
-        try!(emu.mem_write(phdr.vaddr, data_buf.as_slice())
+        try!(emu.borrow()
+            .mem_write(phdr.vaddr, data_buf.as_slice())
             .log_err(|_| {
                 format!("Failed to write segment to emulator: {:?}", phdr)
             }));

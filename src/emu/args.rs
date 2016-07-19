@@ -3,6 +3,7 @@ use emu::vmstate::VmState;
 use emu::datatypes::DataType;
 use std::rc::Rc;
 
+#[derive(Debug)]
 pub struct EmuArgs {
     argv: Vec<Rc<DataType>>,
 }

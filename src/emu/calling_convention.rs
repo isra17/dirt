@@ -21,24 +21,25 @@ impl CallingConvention for Stdcall {
 
 impl CallingConvention for SystemV {
     fn init_args(&self, args: &[u64], vmstate: &VmState) -> Result<(), Error> {
+        let engine = vmstate.engine.borrow();
         let mut args_iter = args.into_iter();
         if let Some(arg) = args_iter.next() {
-            try!(vmstate.engine.reg_write(RegisterX86::RDI as i32, *arg));
+            try!(engine.reg_write(RegisterX86::RDI as i32, *arg));
         }
         if let Some(arg) = args_iter.next() {
-            try!(vmstate.engine.reg_write(RegisterX86::RSI as i32, *arg));
+            try!(engine.reg_write(RegisterX86::RSI as i32, *arg));
         }
         if let Some(arg) = args_iter.next() {
-            try!(vmstate.engine.reg_write(RegisterX86::RDX as i32, *arg));
+            try!(engine.reg_write(RegisterX86::RDX as i32, *arg));
         }
         if let Some(arg) = args_iter.next() {
-            try!(vmstate.engine.reg_write(RegisterX86::RCX as i32, *arg));
+            try!(engine.reg_write(RegisterX86::RCX as i32, *arg));
         }
         if let Some(arg) = args_iter.next() {
-            try!(vmstate.engine.reg_write(RegisterX86::R8 as i32, *arg));
+            try!(engine.reg_write(RegisterX86::R8 as i32, *arg));
         }
         if let Some(arg) = args_iter.next() {
-            try!(vmstate.engine.reg_write(RegisterX86::R9 as i32, *arg));
+            try!(engine.reg_write(RegisterX86::R9 as i32, *arg));
         }
 
         for arg in args_iter {

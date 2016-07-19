@@ -35,16 +35,16 @@ StdString.mt = {
   }
 }
 
-StdString.sizeof = 0x10
+StdString.sizeof = 0x20
 
 function StdString.new(str)
-  if str == "" then return Dirt.Buf(0x10) end
-  if str:len() < 16 then
-    local buf = Dirt.Str(str)
-    return {buf:ptr(), Dirt.U(0), buf}
+  if str == "" then return Dirt.Buf(0x18) end
+  if str:len() < 0x10 then
+    local buf = Dirt.Buf(0x10, str)
+    return {Dirt.This(0x10), 0, buf}
   else
-    local buf = Dirt.Str(str)
-    return {buf:ptr(), Dirt.U(0), Dirt.U(str:len()), buf}
+    local buf = Dirt.Buf(0x10, str)
+    return {Dirt.This(StdString.sizeof), 0, str:len(), buf}
   end
 end
 
@@ -57,7 +57,7 @@ function StdString.from(s, addr)
       return this
     end
   else
-    if this:capacity() > 0x10 then
+    if this:capacity() >= 0x10 then
       return this
     end
   end
@@ -76,10 +76,12 @@ Dirt.rule("std::string::string(char*)",
 Dirt.rule("std::string::string(char*)",
           Dirt.Buf(StdString.sizeof),
           "aaaaaaaaaaaaaaaa",
-          function(s) return StdString.from(s, s:arg(0)):str() == "aa" end)
+          function(s)
+            return StdString.from(s, s:arg(0)):str() == "aaaaaaaaaaaaaaaa"
+          end)
 
---[[
 Dirt.rule("std::string::string(std::string*)",
+          Dirt.Buf(StdString.sizeof),
           StdString.new("aa"),
           function(s) return StdString.from(s, s:arg(0)):str() == "aa" end)
 
@@ -87,4 +89,3 @@ Dirt.rule("std::string::__add(std::string*)",
           StdString.new("aa"),
           StdString.new("bb"),
           function(s) return StdString.from(s, s:arg(0)):str() == "aabb" end)
---]]

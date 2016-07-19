@@ -2,7 +2,6 @@ use dirt_engine::TargetInfo;
 use emu;
 use emu::Error;
 use emu::args::{EmuArgs, PushableArgs};
-use emu::debugger::Debugger;
 use emu::vmstate::VmState;
 
 pub struct EmuEffects<'a> {
@@ -13,24 +12,20 @@ pub struct EmuEffects<'a> {
 
 pub struct EmuEngine {
     pub vmstate: VmState,
-    pub debugger: Option<Debugger>,
 }
 
 impl EmuEngine {
     pub fn new(mut vmstate: VmState) -> Result<EmuEngine, Error> {
         // Code sentinel used to trap function return.
         vmstate.engine
+            .borrow()
             .mem_map(emu::CODE_SENTINEL,
                      0x1000,
                      ::unicorn::unicorn_const::PROT_EXEC)
             .expect("Failed to map code sentinel");
-        // let debugger = try!(Debugger::attach(vmstate.engine.clone()));
         try!(vmstate.init());
 
-        return Ok(EmuEngine {
-            vmstate: vmstate,
-            debugger: None, // Some(debugger),
-        });
+        return Ok(EmuEngine { vmstate: vmstate });
     }
 
     pub fn call(&self,
@@ -57,6 +52,7 @@ impl EmuEngine {
         try!(self.vmstate.set_call_return(emu::CODE_SENTINEL));
         return self.vmstate
             .engine
+            .borrow()
             .emu_start(ip,
                        emu::CODE_SENTINEL,
                        emu::EMU_TIMEOUT,

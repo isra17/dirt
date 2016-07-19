@@ -1,10 +1,12 @@
 use byteorder::{ByteOrder, LittleEndian};
 use emu;
 use emu::Error;
+use emu::env;
 use emu::args::PushableArgs;
 use emu::emu_engine::EmuEffects;
-use emu::env;
+use emu::env::Env;
 use emu::object_info::{MemMap, ObjectInfo};
+use std::cell::RefCell;
 use std::rc::Rc;
 use unicorn;
 use unicorn::unicorn_const::{PROT_EXEC, PROT_READ, PROT_WRITE};
@@ -12,7 +14,7 @@ use unicorn::x86_const::RegisterX86 as RegEnum;
 use utils::LogError;
 
 pub struct VmState {
-    pub engine: Rc<unicorn::Unicorn>,
+    pub engine: Rc<RefCell<unicorn::Unicorn>>,
     pub object_info: ObjectInfo,
     pub stack_info: Option<MemMap>,
     pub emudata_info: Option<MemMap>,
@@ -25,7 +27,7 @@ pub struct DataWriter<'a> {
 }
 
 impl VmState {
-    pub fn new(engine: Rc<unicorn::Unicorn>) -> VmState {
+    pub fn new(engine: Rc<RefCell<unicorn::Unicorn>>) -> VmState {
         return VmState {
             engine: engine,
             object_info: ObjectInfo::new(),
@@ -82,7 +84,11 @@ impl VmState {
     fn init_env(&mut self) -> Result<(), Error> {
         // TODO: Have a VMEnv trait that set up environment for Linux,
         // Windows, etc.
-        return env::linux::init_state(self);
+        let env = env::linux::LinuxEnv {};
+        return env::linux::init_state(self).and_then(|_| {
+            env.attach(self);
+            Ok(())
+        });
     }
 
     pub fn emudata_writer<'a>(&'a self) -> Result<DataWriter<'a>, Error> {
@@ -102,6 +108,7 @@ impl VmState {
     pub fn sp(&self) -> Result<u64, Error> {
         // TODO: Make it arch dependant.
         return self.engine
+            .borrow()
             .reg_read(RegEnum::RSP as i32)
             .map_err(|e| Error::UnicornError(e));
     }
@@ -109,6 +116,7 @@ impl VmState {
     pub fn set_sp(&self, value: u64) -> Result<(), Error> {
         // TODO: Make it arch dependant.
         return self.engine
+            .borrow()
             .reg_write(RegEnum::RSP as i32, value)
             .map_err(|e| Error::UnicornError(e));
     }
@@ -116,6 +124,7 @@ impl VmState {
     pub fn ip(&self) -> Result<u64, Error> {
         // TODO: Make it arch dependant.
         return self.engine
+            .borrow()
             .reg_read(RegEnum::RIP as i32)
             .map_err(|e| Error::UnicornError(e));
     }
@@ -123,6 +132,7 @@ impl VmState {
     pub fn set_ip(&self, value: u64) -> Result<(), Error> {
         // TODO: Make it arch dependant.
         return self.engine
+            .borrow()
             .reg_write(RegEnum::RIP as i32, value)
             .map_err(|e| Error::UnicornError(e));
     }
@@ -136,7 +146,7 @@ impl VmState {
                 }));
             let mut init_data: Vec<u8> = Vec::new();
             init_data.resize(stack_info.size, 0);
-            try!(self.engine.mem_write(stack_info.addr, &init_data));
+            try!(self.engine.borrow().mem_write(stack_info.addr, &init_data));
             return Ok(());
         }
         return Err(Error::StackUninitialized);
@@ -147,7 +157,7 @@ impl VmState {
         if let Some(ref emudata_info) = self.emudata_info {
             let mut init_data: Vec<u8> = Vec::new();
             init_data.resize(emudata_info.size, 0);
-            try!(self.engine.mem_write(emudata_info.addr, &init_data));
+            try!(self.engine.borrow().mem_write(emudata_info.addr, &init_data));
             return Ok(());
         }
         return Err(Error::StackUninitialized);
@@ -156,6 +166,7 @@ impl VmState {
 
     pub fn return_value(&self) -> Result<u64, Error> {
         return self.engine
+            .borrow()
             .reg_read(RegEnum::RAX as i32)
             .map_err(|e| Error::UnicornError(e));
     }
@@ -165,6 +176,7 @@ impl VmState {
         // TODO: Make it arch dependant.
         try!(self.set_sp(sp - 8));
         return self.engine
+            .borrow()
             .mem_write(sp - 8, &self.native_pack(value))
             .map_err(|e| Error::UnicornError(e));
     }
@@ -192,7 +204,7 @@ impl VmState {
         let mut data_buf: Vec<u8> = vec![];
         let mut i = addr;
         loop {
-            match try!(self.engine.mem_read(i, 1)).pop() {
+            match try!(self.engine.borrow().mem_read(i, 1)).pop() {
                 None => break,
                 Some(0) => break,
                 Some(b) => data_buf.push(b),
@@ -206,13 +218,15 @@ impl VmState {
     pub fn write_str(&self, addr: u64, data: &str) -> Result<u64, Error> {
         let mut data_buf = data.as_bytes().to_vec();
         data_buf.push(0);
-        try!(self.engine.mem_write(addr, &data_buf));
+        try!(self.engine.borrow().mem_write(addr, &data_buf));
         return Ok(addr + data_buf.len() as u64);
     }
 
     pub fn read_usize(&self, addr: u64) -> Result<u64, Error> {
         // TODO: Make it arch independant.
-        return Ok(LittleEndian::read_u64(&try!(self.engine.mem_read(addr, 8))));
+        return Ok(LittleEndian::read_u64(&try!(self.engine
+            .borrow()
+            .mem_read(addr, 8))));
     }
 
     /// Unlike unicorn.mem_map, this function keep track of the mapping
@@ -227,7 +241,9 @@ impl VmState {
             return Err(Error::MapAlreadyExists);
         }
 
-        try!(self.engine.mem_map(mem_map.addr, mem_map.size, mem_map.flags));
+        try!(self.engine
+            .borrow()
+            .mem_map(mem_map.addr, mem_map.size, mem_map.flags));
         let addr = mem_map.addr;
         self.object_info.mem_maps.insert(mem_map.name.clone(), mem_map);
         return Ok(addr);
@@ -235,11 +251,11 @@ impl VmState {
 
     pub fn run_shellcode(&self, code: &[u8]) -> Result<(), Error> {
         let addr = self.shellcode_info.as_ref().unwrap().addr;
-        try!(self.engine.mem_write(addr, code));
-        try!(self.engine.emu_start(addr,
-                                   addr + code.len() as u64,
-                                   emu::EMU_TIMEOUT,
-                                   emu::EMU_MAXCOUNT));
+        try!(self.engine.borrow().mem_write(addr, code));
+        try!(self.engine.borrow().emu_start(addr,
+                                            addr + code.len() as u64,
+                                            emu::EMU_TIMEOUT,
+                                            emu::EMU_MAXCOUNT));
 
         return Ok(());
     }
@@ -268,8 +284,17 @@ impl<'a> DataWriter<'a> {
 
     pub fn write_data(&mut self, data: &[u8]) -> Result<u64, Error> {
         let data_ptr = self.write_ptr;
-        try!(self.vmstate.engine.mem_write(self.write_ptr, &data));
+        try!(self.vmstate.engine.borrow().mem_write(self.write_ptr, &data));
         self.write_ptr += data.len() as u64;
         return Ok(data_ptr);
+    }
+
+    pub fn write_usize(&mut self, value: u64) -> Result<u64, Error> {
+        let data = self.vmstate.native_pack(value);
+        return self.write_data(&data);
+    }
+
+    pub fn current_ptr(&self) -> u64 {
+        return self.write_ptr;
     }
 }

@@ -130,3 +130,17 @@ impl DataType for ThisOffsetData {
         return Ok(());
     }
 }
+
+#[derive(Debug)]
+pub struct ByteData(pub u8);
+
+impl DataType for ByteData {
+    fn pushable_value(&self, _: &mut DataWriter) -> Result<u64, Error> {
+        return Ok(self.0 as u64);
+    }
+
+    fn write_value(&self, data_writer: &mut DataWriter) -> Result<(), Error> {
+        try!(data_writer.write_data(&[self.0]));
+        return Ok(());
+    }
+}

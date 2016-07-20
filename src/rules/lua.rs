@@ -1,5 +1,5 @@
 use emu::args::EmuArgs;
-use emu::datatypes::{BufData, CompositeData, DataType, IntegerData,
+use emu::datatypes::{BufData, ByteData, CompositeData, DataType, IntegerData,
                      StringData, ThisOffsetData};
 use emu::emu_engine::EmuEffects;
 use lua;
@@ -107,7 +107,7 @@ impl Rule for LuaRule {
         *lua_effects = None;
 
         if r.is_err() {
-            println!("{:?}", pop_error(&mut lua));
+            // println!("{:?}", pop_error(&mut lua));
             return false;
         }
 
@@ -171,7 +171,27 @@ fn lua_this(lua: &mut ::lua::State) -> i32 {
     }
     lua.set_metatable_from_registry("ThisData");
 
-    (unsafe { &mut *buf }).0 = offset as u64;
+    unsafe { ::std::ptr::write(buf, LuaThisData(offset as u64)) };
+    return 1;
+}
+
+struct LuaByteData(u8);
+
+fn lua_byte(lua: &mut ::lua::State) -> i32 {
+    let byte = if lua.is_string(1) {
+        let s = lua.to_str(1).unwrap().to_owned();
+        lua.pop(1);
+        s.as_bytes()[0]
+    } else {
+        lua.to_integer(1) as u8
+    };
+    let buf: *mut LuaByteData = lua.new_userdata_typed();
+    if buf.is_null() {
+        panic!("Lua error");
+    }
+    lua.set_metatable_from_registry("ByteData");
+
+    unsafe { ::std::ptr::write(buf, LuaByteData(byte)) };
     return 1;
 }
 
@@ -194,6 +214,7 @@ impl LuaRules {
             let mut lua = lua_rules.lua.borrow_mut();
             let dirt_fns = &[("rule", lua_func!(lua_rule)),
                              ("Buf", lua_func!(lua_buf)),
+                             ("Byte", lua_func!(lua_byte)),
                              ("This", lua_func!(lua_this))];
             lua.new_lib(dirt_fns);
             lua.set_global("Dirt");
@@ -213,6 +234,7 @@ impl LuaRules {
             lua.set_field(-2, "__gc");
 
             lua.new_metatable("ThisData");
+            lua.new_metatable("ByteData");
 
             lua.load_library(::lua::Library::Base);
             lua.load_library(::lua::Library::Io);
@@ -319,6 +341,13 @@ impl LuaRules {
                 lua.test_userdata_typed(arg_n, "ThisData")
             } {
                 return Rc::new(ThisOffsetData(offset));
+            }
+        }
+        {
+            if let Some(&mut LuaByteData(byte)) = unsafe {
+                lua.test_userdata_typed(arg_n, "ByteData")
+            } {
+                return Rc::new(ByteData(byte));
             }
         }
 

@@ -73,24 +73,41 @@ Dirt.rule("std::string::string()",
           StdString.new("aa"),
           function(s) return StdString.from(s, s:arg(0)):isEmpty() end)
 
-Dirt.rule("std::string::string(char*)",
+Dirt.rule("std::string::string(str)",
+          Dirt.Buf(StdString.sizeof),
+          StdString.new("aa"),
+          function(s) return StdString.from(s, s:arg(0)):str() == "aa" end)
+
+Dirt.rule("std::string::string(str,pos,len)",
+          Dirt.Buf(StdString.sizeof),
+          StdString.new("abcd"), 1, 2,
+          function(s)
+            return StdString.from(s, s:arg(0)):str() == "bc"
+          end)
+
+Dirt.rule("std::string::string(s)",
           Dirt.Buf(StdString.sizeof),
           "aa",
           function(s) return StdString.from(s, s:arg(0)):str() == "aa" end)
 
-Dirt.rule("std::string::string(char*)",
+Dirt.rule("std::string::string(s)",
           Dirt.Buf(StdString.sizeof),
           "aaaaaaaaaaaaaaaa",
           function(s)
             return StdString.from(s, s:arg(0)):str() == "aaaaaaaaaaaaaaaa"
           end)
 
-Dirt.rule("std::string::string(std::string*)",
+Dirt.rule("std::string::string(s,n)",
           Dirt.Buf(StdString.sizeof),
-          StdString.new("aa"),
-          function(s) return StdString.from(s, s:arg(0)):str() == "aa" end)
+          "abcd", 2,
+          function(s) return StdString.from(s, s:arg(0)):str() == "ab" end)
 
-Dirt.rule("std::string::append(char*)",
+Dirt.rule("std::string::string(n,c)",
+          Dirt.Buf(StdString.sizeof),
+          4, Dirt.Byte("a"),
+          function(s) return StdString.from(s, s:arg(0)):str() == "ab" end)
+
+Dirt.rule("std::string::append(s)",
           StdString.new("aa"),
           "bbbb",
           function(s) return StdString.from(s, s:arg(0)):str() == "aabbbb" end)

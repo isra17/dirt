@@ -25,7 +25,7 @@ pub const BRK_SIZE: usize = 0x00010000;
 
 pub const CODE_SENTINEL: u64 = 0x80000000;
 pub const EMU_TIMEOUT: u64 = 1 * 1000 * 1000; // 1 sec.
-pub const EMU_MAXCOUNT: usize = 0;
+pub const EMU_MAXCOUNT: usize = 0x10000;
 
 
 #[derive(Debug)]

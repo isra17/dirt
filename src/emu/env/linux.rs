@@ -158,7 +158,7 @@ impl LinuxKernel {
                 }
             }
             _ => {
-                println!("syscall({})", sysno);
+                // println!("syscall({})", sysno);
                 0
             }
         };

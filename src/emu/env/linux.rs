@@ -1,3 +1,4 @@
+use byteorder::{ByteOrder, LittleEndian};
 use emu;
 use emu::Error;
 use emu::debugger::Debugger;
@@ -160,6 +161,11 @@ fn read_str(engine: &Unicorn, addr: u64) -> Result<String, Error> {
     return String::from_utf8(data_buf).map_err(|e| Error::FromUtf8Error(e));
 }
 
+fn read_usize(engine: &Unicorn, addr: u64) -> Result<u64, Error> {
+    // TODO: Make it arch independant.
+    return Ok(LittleEndian::read_u64(&try!(engine.mem_read(addr, 8))));
+}
+
 impl LinuxKernel {
     pub fn on_syscall(&mut self, engine: &Unicorn) {
         let rip = engine.reg_read(RegisterX86::RIP as i32).unwrap();
@@ -192,14 +198,24 @@ impl LinuxKernel {
             }
             n if n == Syscall::Writev as u64 => {
                 println!("writev({}, 0x{:x}, {})", argv[0], argv[1], argv[2]);
+                for n in 0..argv[2] {
+                    let addr = read_usize(engine, argv[1] + 0x10 * n)
+                        .expect("addr");
+                    let size = read_usize(engine, argv[1] + 8 + 0x10 * n)
+                        .expect("size");
+                    let data = engine.mem_read(addr, size as usize)
+                        .expect("data");
+                    println!("{:?} > 2", String::from_utf8_lossy(&data));
+                }
                 0xffffffffffffffff
             }
             n if n == Syscall::Uname as u64 => {
                 println!("uname(0x{:x})", argv[0]);
                 engine.mem_write(argv[0],
-                               String::from("Linux\x00dirt\x002.6.28\x00#1 \
-                                             SMP PREEMPT Wed Jun 8 08:40:59 \
-                                             CEST 2016\x00x86_64")
+                               String::from("Linux\x00dirt\x004.6.\
+                                             2-1-ARCH\x00#1 SMP PREEMPT Wed \
+                                             Jun 8 08:40:59 CEST \
+                                             2016\x00x86_64\x00GNU/Linux\x00")
                                    .as_bytes())
                     .expect("Failed to write uname data");
                 0

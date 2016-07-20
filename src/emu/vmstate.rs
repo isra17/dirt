@@ -91,10 +91,8 @@ impl VmState {
         // TODO: Have a VMEnv trait that set up environment for Linux,
         // Windows, etc.
         let env = env::linux::LinuxEnv {};
-        return env::linux::init_state(self).and_then(|_| {
-            self.kernel = Some(env.attach(self));
-            Ok(())
-        });
+        self.kernel = Some(env.attach(self));
+        return env::linux::init_state(self);
     }
 
     pub fn snapshot(&mut self) -> Result<(), Error> {

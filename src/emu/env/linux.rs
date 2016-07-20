@@ -1,8 +1,9 @@
 use emu;
 use emu::Error;
+use emu::debugger::Debugger;
 use emu::env::{Env, Kernel};
 use emu::object_info::MemMap;
-use emu::vmstate::VmState;
+use emu::vmstate::{DataWriter, VmState};
 use std::cell::RefCell;
 use std::rc::Rc;
 use unicorn::{Unicorn, uc_hook};
@@ -22,27 +23,33 @@ pub fn init_state(vmstate: &mut VmState) -> Result<(), Error> {
     // initialized program state, if it worked...
 
     // TODO
-    // let kernel_map_addr = try!(vmstate.mem_map(MemMap {
-    // addr: emu::KERNEL_ADDR,
-    // size: emu::KERNEL_SIZE,
-    // flags: PROT_READ | PROT_WRITE,
-    // name: String::from("[kernel]"),
-    // }));
-    // let mut kernel_writer = DataWriter::new(vmstate, kernel_map_addr);
-    //
-    // try!(init_stack(vmstate, &mut kernel_writer));
-    //
+    let kernel_map_addr = try!(vmstate.mem_map(MemMap {
+        addr: emu::KERNEL_ADDR,
+        size: emu::KERNEL_SIZE,
+        flags: PROT_READ | PROT_WRITE,
+        name: String::from("[kernel]"),
+    }));
+    let mut kernel_writer = DataWriter::new(vmstate, kernel_map_addr);
+
+    try!(init_stack(vmstate, &mut kernel_writer));
+
     // Emulate up to main.
-    // let start_fva = vmstate.object_info
-    // .symbols
-    // .get("_start")
-    // .expect("_start not found")
-    // .value;
-    // let main_fva =
-    // vmstate.object_info.symbols.get("main").expect("main not found").value;
-    // try!(vmstate.engine
-    // .emu_start(start_fva, main_fva, emu::EMU_TIMEOUT, emu::EMU_MAXCOUNT));
-    //
+    let start_fva = vmstate.object_info
+        .symbols
+        .get("_start")
+        .expect("_start not found")
+        .value;
+    let main_fva =
+        vmstate.object_info.symbols.get("main").expect("main not found").value;
+
+    let mut debugger = Debugger::new(vmstate.engine.clone());
+    // debugger.attach().expect("Failed to attach debugger");
+    vmstate.engine
+        .borrow()
+        .emu_start(start_fva, main_fva, emu::EMU_TIMEOUT, emu::EMU_MAXCOUNT)
+        .expect("Failed to run up to main");
+    debugger.detach().expect("Failed to detach debugger");
+
     return Ok(());
 }
 
@@ -66,27 +73,27 @@ fn init_tls(vmstate: &mut VmState) -> Result<(), Error> {
     return Ok(());
 }
 
-// fn init_stack(vmstate: &VmState,
-// data_writer: &mut DataWriter)
-// -> Result<(), Error> {
-// auxv
-// try!(vmstate.stack_push(0));
-// for AuxVec(auxv_type, value) in get_auxv() {
-// try!(vmstate.stack_push(auxv_type as u64));
-// try!(vmstate.stack_push(value));
-// }
-// env
-// try!(vmstate.stack_push(0));
-// argv
-// try!(vmstate.stack_push(0));
-// try!(vmstate.stack_push(try!(data_writer.write_str("/emu"))));
-//
-// argc
-// try!(vmstate.stack_push(1));
-//
-// return Ok(());
-// }
-//
+fn init_stack(vmstate: &VmState,
+              data_writer: &mut DataWriter)
+              -> Result<(), Error> {
+    // auxv
+    try!(vmstate.stack_push(0));
+    // for AuxVec(auxv_type, value) in get_auxv() {
+    // try!(vmstate.stack_push(auxv_type as u64));
+    // try!(vmstate.stack_push(value));
+    // }
+    // env
+    try!(vmstate.stack_push(0));
+    // argv
+    try!(vmstate.stack_push(0));
+    try!(vmstate.stack_push(try!(data_writer.write_str("/emu"))));
+
+    // argc
+    try!(vmstate.stack_push(1));
+
+    return Ok(());
+}
+
 // #[allow(non_camel_case_types)]
 // pub enum AuxVecType {
 // ELF_AT_NULL = 0,
@@ -130,13 +137,35 @@ pub struct LinuxKernel {
 #[allow(dead_code)]
 #[derive(Debug)]
 enum Syscall {
-    Mmap = 0x9,
-    Brk = 0xc,
+    Open = 2,
+    Mmap = 9,
+    Brk = 12,
+    Writev = 20,
+    Uname = 63,
+}
+
+fn read_str(engine: &Unicorn, addr: u64) -> Result<String, Error> {
+    // TODO: Read a page at once, should be faster.
+    let mut data_buf: Vec<u8> = vec![];
+    let mut i = addr;
+    loop {
+        match try!(engine.mem_read(i, 1)).pop() {
+            None => break,
+            Some(0) => break,
+            Some(b) => data_buf.push(b),
+        }
+
+        i += 1;
+    }
+    return String::from_utf8(data_buf).map_err(|e| Error::FromUtf8Error(e));
 }
 
 impl LinuxKernel {
     pub fn on_syscall(&mut self, engine: &Unicorn) {
+        let rip = engine.reg_read(RegisterX86::RIP as i32).unwrap();
         let sysno = engine.reg_read(RegisterX86::RAX as i32).unwrap();
+        println!("syscall({}) at {:x}", sysno, rip);
+
         let argv = vec![
             engine.reg_read(RegisterX86::RDI as i32).unwrap(),
             engine.reg_read(RegisterX86::RSI as i32).unwrap(),
@@ -147,8 +176,12 @@ impl LinuxKernel {
         ];
 
         let result = match sysno {
+            n if n == Syscall::Open as u64 => {
+                println!("Open({})", read_str(engine, argv[0]).unwrap());
+                0xffffffffffffffff
+            }
             n if n == Syscall::Brk as u64 => {
-                println!("syscall({}): Brk(0x{:x})", sysno, argv[0]);
+                println!("Brk(0x{:x})", argv[0]);
                 let ptr = argv[0];
                 if ptr == 0 {
                     self.brk_ptr
@@ -157,10 +190,21 @@ impl LinuxKernel {
                     ptr
                 }
             }
-            _ => {
-                println!("syscall({})", sysno);
+            n if n == Syscall::Writev as u64 => {
+                println!("writev({}, 0x{:x}, {})", argv[0], argv[1], argv[2]);
+                0xffffffffffffffff
+            }
+            n if n == Syscall::Uname as u64 => {
+                println!("uname(0x{:x})", argv[0]);
+                engine.mem_write(argv[0],
+                               String::from("Linux\x00dirt\x002.6.28\x00#1 \
+                                             SMP PREEMPT Wed Jun 8 08:40:59 \
+                                             CEST 2016\x00x86_64")
+                                   .as_bytes())
+                    .expect("Failed to write uname data");
                 0
             }
+            _ => 0,
         };
 
         engine.reg_write(RegisterX86::RAX as i32, result)

@@ -148,7 +148,7 @@ impl LinuxKernel {
 
         let result = match sysno {
             n if n == Syscall::Brk as u64 => {
-                // println!("syscall({}): Brk(0x{:x})", sysno, argv[0]);
+                println!("syscall({}): Brk(0x{:x})", sysno, argv[0]);
                 let ptr = argv[0];
                 if ptr == 0 {
                     self.brk_ptr
@@ -158,7 +158,7 @@ impl LinuxKernel {
                 }
             }
             _ => {
-                // println!("syscall({})", sysno);
+                println!("syscall({})", sysno);
                 0
             }
         };

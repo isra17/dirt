@@ -89,7 +89,7 @@ impl DirtEngine {
                             }
                         }
                         Err(emu::Error::ExecError(e)) => {
-                            // println!("ExecError: {:?}", e);
+                            println!("ExecError: {:?}", e);
                             Err(CallError::NotMatched)
                         }
                         Err(e) => Err(CallError::EmuError(e)),

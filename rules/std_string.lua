@@ -111,7 +111,7 @@ Dirt.rule("std::string::string(n,c)",
           StdString.new("xyz"),
           4, Dirt.Byte("a"),
           function(s)
-            print(string.format("%x", s:usize(s:arg(0)+0x10)))
+            print(string.format("fill: %x", s:usize(s:arg(0)+0x10)))
             return StdString.from(s, s:arg(0)):str() == "aaaa" end)
 
 Dirt.rule("std::string::append(s)",

@@ -67,7 +67,7 @@ impl DirtEngine {
                              target: &TargetInfo)
                              -> Result<Option<FunctionInfo>, Error> {
         let debugger = &mut self.debugger;
-        let emu = &self.emu;
+        let emu = &mut self.emu;
         // Iterate through each candidate's rules.
         for (candidate_name, rules) in self.ruleset.candidates() {
             // For each target rules, get a list of the input argument to be

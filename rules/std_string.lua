@@ -64,48 +64,55 @@ function StdString.from(s, addr)
 end
 
 Dirt.rule("std::string::string()",
-          Dirt.Buf(StdString.sizeof),
-          "aa",
+          StdString.new("xyz"),
+          2, Dirt.Byte("a"),
           function(s) return StdString.from(s, s:arg(0)):isEmpty() end)
 
 Dirt.rule("std::string::string()",
-          Dirt.Buf(StdString.sizeof),
-          StdString.new("aa"),
+          StdString.new("xyz"),
+          "aa", 2,
+          function(s) return StdString.from(s, s:arg(0)):isEmpty() end)
+
+Dirt.rule("std::string::string()",
+          StdString.new("xyz"),
+          StdString.new("aa"), 0, -1,
           function(s) return StdString.from(s, s:arg(0)):isEmpty() end)
 
 Dirt.rule("std::string::string(str)",
-          Dirt.Buf(StdString.sizeof),
+          StdString.new("xyz"),
           StdString.new("aa"),
           function(s) return StdString.from(s, s:arg(0)):str() == "aa" end)
 
 Dirt.rule("std::string::string(str,pos,len)",
-          Dirt.Buf(StdString.sizeof),
+          StdString.new("xyz"),
           StdString.new("abcd"), 1, 2,
           function(s)
             return StdString.from(s, s:arg(0)):str() == "bc"
           end)
 
 Dirt.rule("std::string::string(s)",
-          Dirt.Buf(StdString.sizeof),
+          StdString.new("xyz"),
           "aa",
           function(s) return StdString.from(s, s:arg(0)):str() == "aa" end)
 
 Dirt.rule("std::string::string(s)",
-          Dirt.Buf(StdString.sizeof),
+          StdString.new("xyz"),
           "aaaaaaaaaaaaaaaa",
           function(s)
             return StdString.from(s, s:arg(0)):str() == "aaaaaaaaaaaaaaaa"
           end)
 
 Dirt.rule("std::string::string(s,n)",
-          Dirt.Buf(StdString.sizeof),
+          StdString.new("xyz"),
           "abcd", 2,
           function(s) return StdString.from(s, s:arg(0)):str() == "ab" end)
 
 Dirt.rule("std::string::string(n,c)",
-          Dirt.Buf(StdString.sizeof),
+          StdString.new("xyz"),
           4, Dirt.Byte("a"),
-          function(s) return StdString.from(s, s:arg(0)):str() == "ab" end)
+          function(s)
+            print(string.format("%x", s:usize(s:arg(0)+0x10)))
+            return StdString.from(s, s:arg(0)):str() == "aaaa" end)
 
 Dirt.rule("std::string::append(s)",
           StdString.new("aa"),

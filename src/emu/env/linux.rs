@@ -148,7 +148,7 @@ impl LinuxKernel {
 
         let result = match sysno {
             n if n == Syscall::Brk as u64 => {
-                println!("syscall({}): Brk(0x{:x})", sysno, argv[0]);
+                // println!("syscall({}): Brk(0x{:x})", sysno, argv[0]);
                 let ptr = argv[0];
                 if ptr == 0 {
                     self.brk_ptr
@@ -199,6 +199,11 @@ impl Env for LinuxEnv {
 }
 
 impl Kernel for LinuxKernel {
+    fn reset(&mut self) -> Result<(), Error> {
+        self.brk_ptr = emu::BRK_ADDR;
+        Ok(())
+    }
+
     fn detach(&mut self, vmstate: &mut VmState) {
         if let Some(intr_hook) = self.intr_hook {
             vmstate.engine

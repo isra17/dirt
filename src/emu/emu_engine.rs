@@ -28,7 +28,7 @@ impl EmuEngine {
         return Ok(EmuEngine { vmstate: vmstate });
     }
 
-    pub fn call(&self,
+    pub fn call(&mut self,
                 target: &TargetInfo,
                 args: &EmuArgs)
                 -> Result<EmuEffects, Error> {
@@ -42,9 +42,12 @@ impl EmuEngine {
         return self.vmstate.collect_call_results(pushable_args);
     }
 
-    fn clean_state(&self) -> Result<(), Error> {
+    fn clean_state(&mut self) -> Result<(), Error> {
         try!(self.vmstate.reset_stack());
         try!(self.vmstate.reset_emudata());
+        try!(self.vmstate.restore_snapshot());
+        let kernel = self.vmstate.kernel.as_ref().unwrap();
+        try!(kernel.borrow_mut().reset());
         return Ok(());
     }
 

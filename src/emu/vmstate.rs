@@ -2,6 +2,7 @@ use byteorder::{ByteOrder, LittleEndian};
 use emu;
 use emu::Error;
 use emu::env;
+use emu::env::Kernel;
 use emu::args::PushableArgs;
 use emu::emu_engine::EmuEffects;
 use emu::env::Env;
@@ -19,6 +20,8 @@ pub struct VmState {
     pub stack_info: Option<MemMap>,
     pub emudata_info: Option<MemMap>,
     pub shellcode_info: Option<MemMap>,
+    pub snapshot: Vec<(MemMap, Vec<u8>)>,
+    pub kernel: Option<Rc<RefCell<Kernel>>>,
 }
 
 pub struct DataWriter<'a> {
@@ -34,6 +37,8 @@ impl VmState {
             stack_info: None,
             emudata_info: None,
             shellcode_info: None,
+            snapshot: Default::default(),
+            kernel: Default::default(),
         };
     }
 
@@ -78,6 +83,7 @@ impl VmState {
 
         try!(self.init_env());
 
+        try!(self.snapshot());
         return Ok(());
     }
 
@@ -86,9 +92,27 @@ impl VmState {
         // Windows, etc.
         let env = env::linux::LinuxEnv {};
         return env::linux::init_state(self).and_then(|_| {
-            env.attach(self);
+            self.kernel = Some(env.attach(self));
             Ok(())
         });
+    }
+
+    pub fn snapshot(&mut self) -> Result<(), Error> {
+        self.snapshot.clear();
+        for map in self.object_info.mem_maps.values() {
+            let mem = try!(self.engine
+                .borrow()
+                .mem_read(map.addr, map.size));
+            self.snapshot.push((map.clone(), mem));
+        }
+        Ok(())
+    }
+
+    pub fn restore_snapshot(&self) -> Result<(), Error> {
+        for &(ref map, ref data) in &self.snapshot {
+            try!(self.engine.borrow().mem_write(map.addr, data))
+        }
+        Ok(())
     }
 
     pub fn emudata_writer<'a>(&'a self) -> Result<DataWriter<'a>, Error> {

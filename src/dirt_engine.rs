@@ -66,7 +66,8 @@ impl DirtEngine {
     #[allow(unused_variables)]
     pub fn identify_function(&mut self,
                              target: &TargetInfo)
-                             -> Result<Option<FunctionInfo>, Error> {
+                             -> Result<Vec<FunctionInfo>, Error> {
+        let mut matches = Vec::new();
         let debugger = &mut self.debugger;
         let emu = &mut self.emu;
         // Iterate through each candidate's rules.
@@ -100,15 +101,13 @@ impl DirtEngine {
 
             match call_result {
                 Ok(_) => {
-                    return Ok(Some(FunctionInfo {
-                        name: candidate_name.clone(),
-                    }))
+                    matches.push(FunctionInfo { name: candidate_name.clone() })
                 }
                 Err(CallError::NotMatched) => (),
                 Err(CallError::EmuError(e)) => return Err(Error::EmuError(e)),
             };
         }
-        return Ok(None);
+        return Ok(matches);
     }
 
     /// Helper function, returns the default calling convention for the target

@@ -66,20 +66,23 @@ fn tests_all_candidates() {
             .map(|&Candidate(ref fn_name, fva)| {
                 let cc = dirt.default_cc();
                 match dirt.identify_function(&TargetInfo { fva: fva, cc: cc }) {
-                    Ok(Some(func_info)) => {
-                        if &func_info.name == fn_name {
+                    Ok(matches) => {
+                        if matches.len() == 0 {
+                            println!("{}: No match", fn_name);
+                            return false;
+                        }
+                        if matches.len() == 1 && &matches[0].name == fn_name {
                             println!("{}: Ok!", fn_name);
                             return true;
                         } else {
-                            println!("{}: Overmatching {}",
-                                     func_info.name,
-                                     fn_name);
+                            println!("{}: Overmatched by {:?}",
+                                     fn_name,
+                                     matches.iter()
+                                         .filter(|m| &m.name != fn_name)
+                                         .map(|m| m.name.as_str())
+                                         .collect::<Vec<&str>>());
                             return false;
                         }
-                    }
-                    Ok(None) => {
-                        println!("{}: No match", fn_name);
-                        return false;
                     }
                     Err(e) => {
                         println!("{}: Err({:?})", fn_name, e);

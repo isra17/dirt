@@ -21,7 +21,7 @@ pub const TLS_SIZE: usize = 0x10000;
 pub const SHELLCODE_ADDR: u64 = 0x14000000;
 pub const SHELLCODE_SIZE: usize = 0x10000;
 pub const BRK_ADDR: u64 = 0x20000000;
-pub const BRK_SIZE: usize = 0x00010000;
+pub const BRK_SIZE: usize = 0x100000;
 
 pub const CODE_SENTINEL: u64 = 0x80000000;
 pub const EMU_TIMEOUT: u64 = 1 * 1000 * 1000; // 1 sec.

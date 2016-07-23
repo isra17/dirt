@@ -3,6 +3,7 @@ extern crate capstone;
 extern crate elf;
 #[macro_use]
 extern crate lua;
+extern crate rand;
 extern crate unicorn;
 
 pub mod dirt_engine;

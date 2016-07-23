@@ -6,6 +6,7 @@ use emu::env::{Env, Kernel};
 use emu::object_info::MemMap;
 use emu::vmstate::{DataWriter, VmState};
 use std::cell::RefCell;
+use rand::{Rng, StdRng};
 use std::rc::Rc;
 use unicorn::{Unicorn, uc_hook};
 use unicorn::unicorn_const::{PROT_READ, PROT_WRITE};
@@ -16,9 +17,6 @@ enum Msr {
 }
 
 pub fn init_state(vmstate: &mut VmState) -> Result<(), Error> {
-    // Set up TLS.
-    try!(init_tls(vmstate));
-
     // Set up the program stack as it would look from the kernel and
     // emulate <__start> up to <main>. This should give us a nice
     // initialized program state, if it worked...
@@ -43,46 +41,75 @@ pub fn init_state(vmstate: &mut VmState) -> Result<(), Error> {
     let main_fva =
         vmstate.object_info.symbols.get("main").expect("main not found").value;
 
-    let mut debugger = Debugger::new(vmstate.engine.clone());
+    // let mut debugger = Debugger::new(vmstate.engine.clone());
     // debugger.attach().expect("Failed to attach debugger");
     vmstate.engine
         .borrow()
         .emu_start(start_fva, main_fva, emu::EMU_TIMEOUT, emu::EMU_MAXCOUNT)
         .expect("Failed to run up to main");
-    debugger.detach().expect("Failed to detach debugger");
+    // debugger.detach().expect("Failed to detach debugger");
 
     return Ok(());
 }
 
-fn init_tls(vmstate: &mut VmState) -> Result<(), Error> {
-    // Map TLS.
-    try!(vmstate.mem_map(MemMap {
-        addr: emu::TLS_ADDR,
-        size: emu::TLS_SIZE,
-        flags: PROT_READ | PROT_WRITE,
-        name: String::from("[tls]"),
-    }));
+#[allow(non_camel_case_types)]
+pub enum AuxVecType {
+    ELF_AT_NULL = 0,
+    ELF_AT_IGNORE,
+    ELF_AT_EXECFD,
+    ELF_AT_PHDR,
+    ELF_AT_PHENT,
+    ELF_AT_PHNUM,
+    ELF_AT_PAGESZ,
+    ELF_AT_BASE,
+    ELF_AT_FLAGS,
+    ELF_AT_ENTRY,
+    ELF_AT_NOTELF,
+    ELF_AT_UID,
+    ELF_AT_EUID,
+    ELF_AT_GID,
+    ELF_AT_EGID,
+    ELF_AT_PLATFORM,
+    ELF_AT_HWCAP,
+    ELF_AT_CLKTCK,
+    ELF_AT_RANDOM = 25,
+    ELF_AT_SYSINFO = 32,
+    ELF_AT_SYSINFO_EHDR,
+}
 
-    let fs = emu::TLS_ADDR + 0x1000;
-    let engine = vmstate.engine.borrow();
+struct AuxVec(AuxVecType, u64);
 
-    // Set FS.
-    try!(engine.reg_write(RegisterX86::RAX as i32, fs & 0xffffffff));
-    try!(engine.reg_write(RegisterX86::RDX as i32, (fs >> 32) & 0xffffffff));
-    try!(engine.reg_write(RegisterX86::RCX as i32, Msr::FS as u64));
-    try!(vmstate.run_shellcode(&[0x0F, 0x30]));
-    return Ok(());
+fn get_auxv(vmstate: &VmState) -> Vec<AuxVec> {
+    let mut rng = StdRng::new().expect("Failed to initialize RNG");
+    let mut rand = [0u8; 16];
+    rng.fill_bytes(&mut rand);
+    let rand_addr = vmstate.sp().unwrap() - rand.len() as u64;
+    vmstate.set_sp(rand_addr).expect("Failed to push rand");
+    vmstate.engine
+        .borrow()
+        .mem_write(rand_addr, &rand)
+        .expect("failed to write rand");
+
+    return vec![
+        AuxVec(AuxVecType::ELF_AT_NULL, 0),
+        AuxVec(AuxVecType::ELF_AT_RANDOM, rand_addr),
+        AuxVec(AuxVecType::ELF_AT_EGID, 0),
+        AuxVec(AuxVecType::ELF_AT_GID, 0),
+        AuxVec(AuxVecType::ELF_AT_EUID, 0),
+        AuxVec(AuxVecType::ELF_AT_UID, 0),
+        AuxVec(AuxVecType::ELF_AT_FLAGS, 0),
+        AuxVec(AuxVecType::ELF_AT_PAGESZ, 0x1000),
+    ];
 }
 
 fn init_stack(vmstate: &VmState,
               data_writer: &mut DataWriter)
               -> Result<(), Error> {
     // auxv
-    try!(vmstate.stack_push(0));
-    // for AuxVec(auxv_type, value) in get_auxv() {
-    // try!(vmstate.stack_push(auxv_type as u64));
-    // try!(vmstate.stack_push(value));
-    // }
+    for AuxVec(auxv_type, value) in get_auxv(vmstate) {
+        try!(vmstate.stack_push(value));
+        try!(vmstate.stack_push(auxv_type as u64));
+    }
     // env
     try!(vmstate.stack_push(0));
     // argv
@@ -94,41 +121,6 @@ fn init_stack(vmstate: &VmState,
 
     return Ok(());
 }
-
-// #[allow(non_camel_case_types)]
-// pub enum AuxVecType {
-// ELF_AT_NULL = 0,
-// ELF_AT_IGNORE,
-// ELF_AT_EXECFD,
-// ELF_AT_PHDR,
-// ELF_AT_PHENT,
-// ELF_AT_PHNUM,
-// ELF_AT_PAGESZ,
-// ELF_AT_BASE,
-// ELF_AT_FLAGS,
-// ELF_AT_ENTRY,
-// ELF_AT_NOTELF,
-// ELF_AT_UID,
-// ELF_AT_EUID,
-// ELF_AT_GID,
-// ELF_AT_EGID,
-// ELF_AT_PLATFORM,
-// ELF_AT_HWCAP,
-// ELF_AT_CLKTCK,
-// ELF_AT_RANDOM = 25,
-// ELF_AT_SYSINFO = 32,
-// ELF_AT_SYSINFO_EHDR,
-// }
-//
-// struct AuxVec(AuxVecType, u64);
-//
-// fn get_auxv() -> Vec<AuxVec> {
-// return vec![
-// AuxVec(AuxVecType::ELF_AT_PAGESZ, 0x1000),
-// AuxVec(AuxVecType::ELF_AT_FLAGS, 0),
-// ];
-// }
-//
 
 pub struct LinuxKernel {
     intr_hook: Option<uc_hook>,
@@ -143,8 +135,20 @@ enum Syscall {
     Brk = 12,
     Writev = 20,
     Uname = 63,
+    Prctl = 158,
 }
 
+#[allow(dead_code)]
+#[derive(Debug)]
+enum PrctlCode {
+    ArchSetGs = 0x1001,
+    ArchSetFs = 0x1002,
+    ArchGetFs = 0x1003,
+    ArchGetGs = 0x1004,
+}
+
+// TODO: Implements the following as a trait for Unicorn. Duplicates current
+// VmState logic...
 fn read_str(engine: &Unicorn, addr: u64) -> Result<String, Error> {
     // TODO: Read a page at once, should be faster.
     let mut data_buf: Vec<u8> = vec![];
@@ -166,6 +170,61 @@ fn read_usize(engine: &Unicorn, addr: u64) -> Result<u64, Error> {
     return Ok(LittleEndian::read_u64(&try!(engine.mem_read(addr, 8))));
 }
 
+fn set_fs(engine: &Unicorn, fs: u64, rip: u64) -> Result<(), Error> {
+    let saved_rax = engine.reg_read(RegisterX86::RAX as i32).unwrap();
+    let saved_rcx = engine.reg_read(RegisterX86::RCX as i32).unwrap();
+    let saved_rdx = engine.reg_read(RegisterX86::RDX as i32).unwrap();
+
+    // Push saved rip.
+    let sp = engine.reg_read(RegisterX86::RSP as i32).unwrap();
+    try!(engine.reg_write(RegisterX86::RSP as i32, sp - 8));
+    let mut buf = Vec::with_capacity(8);
+    buf.resize(8, 0);
+    LittleEndian::write_u64(&mut buf, rip);
+    try!(engine.mem_write(sp - 8, &buf));
+
+
+    println!("Setting FS as {:x}", fs);
+    try!(engine.reg_write(RegisterX86::RAX as i32, fs & 0xffffffff));
+    try!(engine.reg_write(RegisterX86::RDX as i32, (fs >> 32) & 0xffffffff));
+    try!(engine.reg_write(RegisterX86::RCX as i32, Msr::FS as u64));
+    let mut shellcode = vec![0x0f, 0x30];
+
+    // mov rax, saved_rax
+    shellcode.append(&mut vec![0x48, 0xB8]);
+    buf.resize(8, 0);
+    LittleEndian::write_u64(&mut buf, saved_rax);
+    shellcode.append(&mut buf);
+    // mov rcx, saved_rcx
+    shellcode.append(&mut vec![0x48, 0xB9]);
+    buf.resize(8, 0);
+    LittleEndian::write_u64(&mut buf, saved_rcx);
+    shellcode.append(&mut buf);
+    // mov rdx, saved_rdx
+    shellcode.append(&mut vec![0x48, 0xBA]);
+    buf.resize(8, 0);
+    LittleEndian::write_u64(&mut buf, saved_rdx);
+    shellcode.append(&mut buf);
+    // ret
+    shellcode.push(0xC3);
+
+    return run_shellcode(engine, &shellcode);
+}
+
+fn run_shellcode(engine: &Unicorn, code: &[u8]) -> Result<(), Error> {
+    // Dirty hack to hijack control flow...
+    let addr = emu::SHELLCODE_ADDR;
+
+    try!(engine.mem_write(addr, code));
+    try!(engine.reg_write(RegisterX86::RIP as i32, addr - 2));
+
+    println!("shellcode: {:?}", engine.mem_read(addr, code.len()));
+    println!("rip: {:x}",
+             engine.reg_read(RegisterX86::RIP as i32).unwrap());
+
+    return Ok(());
+}
+
 impl LinuxKernel {
     pub fn on_syscall(&mut self, engine: &Unicorn) {
         let rip = engine.reg_read(RegisterX86::RIP as i32).unwrap();
@@ -183,7 +242,7 @@ impl LinuxKernel {
 
         let result = match sysno {
             n if n == Syscall::Open as u64 => {
-                println!("Open({})", read_str(engine, argv[0]).unwrap());
+                println!("Open(\"{}\")", read_str(engine, argv[0]).unwrap());
                 0xffffffffffffffff
             }
             n if n == Syscall::Brk as u64 => {
@@ -210,15 +269,41 @@ impl LinuxKernel {
                 0xffffffffffffffff
             }
             n if n == Syscall::Uname as u64 => {
+                fn extend_64_bytes(data: &[u8]) -> Vec<u8> {
+                    let mut bytes = Vec::from(data);
+                    bytes.resize(64, 0);
+                    bytes
+                }
+
                 println!("uname(0x{:x})", argv[0]);
-                engine.mem_write(argv[0],
-                               String::from("Linux\x00dirt\x004.6.\
-                                             2-1-ARCH\x00#1 SMP PREEMPT Wed \
-                                             Jun 8 08:40:59 CEST \
-                                             2016\x00x86_64\x00GNU/Linux\x00")
-                                   .as_bytes())
+                let mut uname = Vec::with_capacity(64 * 6);
+                uname.append(&mut extend_64_bytes("Linux".as_bytes()));
+                uname.append(&mut extend_64_bytes("dirt".as_bytes()));
+                uname.append(&mut extend_64_bytes("4.6.2-1-ARCH".as_bytes()));
+                uname.append(&mut extend_64_bytes("#1 SMP PREEMPT Wed Jun 8 \
+                                                   08:40:59 CEST 2016"
+                    .as_bytes()));
+                uname.append(&mut extend_64_bytes("x86_64".as_bytes()));
+                uname.append(&mut extend_64_bytes("GNU/Linux".as_bytes()));
+                engine.mem_write(argv[0], &uname)
                     .expect("Failed to write uname data");
                 0
+            }
+            n if n == Syscall::Prctl as u64 => {
+                let code = argv[0];
+                let addr = argv[1];
+                println!("prctl(0x{:x}, 0x{:x})", argv[0], argv[1]);
+                match code {
+                    n if n == PrctlCode::ArchSetFs as u64 => {
+                        let next_rip = rip + 2;
+                        engine.reg_write(RegisterX86::RAX as i32, 0)
+                            .expect("Failed to set rax");
+                        set_fs(engine, addr, next_rip)
+                            .expect("Failed to set fs");
+                        return;
+                    }
+                    _ => panic!("Prctl code not implemented"),
+                };
             }
             _ => 0,
         };

@@ -63,6 +63,7 @@ impl DirtEngine {
     }
 
     /// Identify a single function.
+    #[allow(unused_variables)]
     pub fn identify_function(&mut self,
                              target: &TargetInfo)
                              -> Result<Option<FunctionInfo>, Error> {

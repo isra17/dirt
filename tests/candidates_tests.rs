@@ -80,6 +80,7 @@ fn tests_all_candidates() {
             })
             .collect();
         any_failed = any_failed || results.iter().any(|&x| !x);
+        println!("{} Emulation Call Done", dirt.emu().emu_counter())
     }
     assert!(!any_failed, "One or more match failed.");
 }

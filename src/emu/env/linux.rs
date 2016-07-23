@@ -184,7 +184,7 @@ fn set_fs(engine: &Unicorn, fs: u64, rip: u64) -> Result<(), Error> {
     try!(engine.mem_write(sp - 8, &buf));
 
 
-    println!("Setting FS as {:x}", fs);
+    // println!("Setting FS as {:x}", fs);
     try!(engine.reg_write(RegisterX86::RAX as i32, fs & 0xffffffff));
     try!(engine.reg_write(RegisterX86::RDX as i32, (fs >> 32) & 0xffffffff));
     try!(engine.reg_write(RegisterX86::RCX as i32, Msr::FS as u64));
@@ -218,9 +218,9 @@ fn run_shellcode(engine: &Unicorn, code: &[u8]) -> Result<(), Error> {
     try!(engine.mem_write(addr, code));
     try!(engine.reg_write(RegisterX86::RIP as i32, addr - 2));
 
-    println!("shellcode: {:?}", engine.mem_read(addr, code.len()));
-    println!("rip: {:x}",
-             engine.reg_read(RegisterX86::RIP as i32).unwrap());
+    // println!("shellcode: {:?}", engine.mem_read(addr, code.len()));
+    // println!("rip: {:x}",
+    //         engine.reg_read(RegisterX86::RIP as i32).unwrap());
 
     return Ok(());
 }
@@ -229,7 +229,7 @@ impl LinuxKernel {
     pub fn on_syscall(&mut self, engine: &Unicorn) {
         let rip = engine.reg_read(RegisterX86::RIP as i32).unwrap();
         let sysno = engine.reg_read(RegisterX86::RAX as i32).unwrap();
-        println!("syscall({}) at {:x}", sysno, rip);
+        // println!("syscall({}) at {:x}", sysno, rip);
 
         let argv = vec![
             engine.reg_read(RegisterX86::RDI as i32).unwrap(),
@@ -242,11 +242,11 @@ impl LinuxKernel {
 
         let result = match sysno {
             n if n == Syscall::Open as u64 => {
-                println!("Open(\"{}\")", read_str(engine, argv[0]).unwrap());
+                // println!("Open(\"{}\")", read_str(engine, argv[0]).unwrap());
                 0xffffffffffffffff
             }
             n if n == Syscall::Brk as u64 => {
-                println!("Brk(0x{:x})", argv[0]);
+                // println!("Brk(0x{:x})", argv[0]);
                 let ptr = argv[0];
                 if ptr == 0 {
                     self.brk_ptr
@@ -256,7 +256,8 @@ impl LinuxKernel {
                 }
             }
             n if n == Syscall::Writev as u64 => {
-                println!("writev({}, 0x{:x}, {})", argv[0], argv[1], argv[2]);
+                // println!("writev({}, 0x{:x}, {})", argv[0], argv[1],
+                // argv[2]);
                 for n in 0..argv[2] {
                     let addr = read_usize(engine, argv[1] + 0x10 * n)
                         .expect("addr");
@@ -264,7 +265,7 @@ impl LinuxKernel {
                         .expect("size");
                     let data = engine.mem_read(addr, size as usize)
                         .expect("data");
-                    println!("{:?} > 2", String::from_utf8_lossy(&data));
+                    // println!("{:?} > 2", String::from_utf8_lossy(&data));
                 }
                 0xffffffffffffffff
             }
@@ -275,7 +276,7 @@ impl LinuxKernel {
                     bytes
                 }
 
-                println!("uname(0x{:x})", argv[0]);
+                // println!("uname(0x{:x})", argv[0]);
                 let mut uname = Vec::with_capacity(64 * 6);
                 uname.append(&mut extend_64_bytes("Linux".as_bytes()));
                 uname.append(&mut extend_64_bytes("dirt".as_bytes()));
@@ -292,7 +293,7 @@ impl LinuxKernel {
             n if n == Syscall::Prctl as u64 => {
                 let code = argv[0];
                 let addr = argv[1];
-                println!("prctl(0x{:x}, 0x{:x})", argv[0], argv[1]);
+                // println!("prctl(0x{:x}, 0x{:x})", argv[0], argv[1]);
                 match code {
                     n if n == PrctlCode::ArchSetFs as u64 => {
                         let next_rip = rip + 2;

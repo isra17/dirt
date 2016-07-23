@@ -12,6 +12,7 @@ pub struct EmuEffects<'a> {
 
 pub struct EmuEngine {
     pub vmstate: VmState,
+    pub emu_counter: usize,
 }
 
 impl EmuEngine {
@@ -25,7 +26,10 @@ impl EmuEngine {
             .expect("Failed to map code sentinel");
         try!(vmstate.init());
 
-        return Ok(EmuEngine { vmstate: vmstate });
+        return Ok(EmuEngine {
+            vmstate: vmstate,
+            emu_counter: 0,
+        });
     }
 
     pub fn call(&mut self,
@@ -51,8 +55,9 @@ impl EmuEngine {
         return Ok(());
     }
 
-    fn call_and_return(&self, ip: u64) -> Result<(), Error> {
+    fn call_and_return(&mut self, ip: u64) -> Result<(), Error> {
         try!(self.vmstate.set_call_return(emu::CODE_SENTINEL));
+        self.emu_counter += 1;
         return self.vmstate
             .engine
             .borrow()
@@ -61,5 +66,9 @@ impl EmuEngine {
                        emu::EMU_TIMEOUT,
                        emu::EMU_MAXCOUNT)
             .map_err(|e| Error::ExecError(e));
+    }
+
+    pub fn emu_counter(&self) -> usize {
+        self.emu_counter
     }
 }

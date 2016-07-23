@@ -37,14 +37,15 @@ StdString.mt = {
 
 StdString.sizeof = 0x20
 
-function StdString.new(str)
+function StdString.new(str, capacity)
+  capacity = capacity or str:len()
   if str == "" then return Dirt.Buf(0x18) end
   if str:len() < 0x10 then
     local buf = Dirt.Buf(0x10, str)
     return {Dirt.This(0x10), str:len(), buf}
   else
-    local buf = Dirt.Buf(0x10, str)
-    return {Dirt.This(StdString.sizeof), str:len(), str:len(), 0, buf}
+    local buf = Dirt.Buf(capacity, str)
+    return {Dirt.This(StdString.sizeof), str:len(), capacity, 0, buf}
   end
 end
 
@@ -111,6 +112,39 @@ Dirt.rule("std::string::string(n,c)",
           StdString.new("xyz"),
           4, Dirt.Byte("a"),
           function(s) return StdString.from(s, s:arg(0)):str() == "aaaa" end)
+
+Dirt.rule("std::string::size()",
+          StdString.new("aaaaaaaaaaaaaaaa", 0x20),
+          function(s) return s:return_value() == 0x10 end)
+
+Dirt.rule("std::string::resize(n)",
+          StdString.new("aaaaaaaa"), 4,
+          function(s) return StdString.from(s, s:arg(0)):str() == "aaaa" end)
+
+Dirt.rule("std::string::resize(n, c)",
+          StdString.new("aaaa"), 8, Dirt.Byte("b"),
+          function(s) return StdString.from(s, s:arg(0)):str() == "aaaabbbb" end)
+
+Dirt.rule("std::string::capacity()",
+          StdString.new("aaaaaaaaaaaaaaaa", 0x20),
+          function(s) return s:return_value() == 0x20 end)
+
+Dirt.rule("std::string::reserve(n)",
+          StdString.new("aaaaaaaa"),
+          0x10,
+          function(s)
+            local self = StdString.from(s, s:arg(0))
+            return self:str() == "aaaaaaaa" and
+                   self:capacity() == 0x10
+          end)
+
+Dirt.rule("std::string::empty()",
+          StdString.new(""),
+          function(s) return s:return_value() == 1 end)
+
+Dirt.rule("std::string::empty()",
+          StdString.new("aaaaaaaa"),
+          function(s) return s:return_value() == 0 end)
 
 Dirt.rule("std::string::append(s)",
           StdString.new("aa"),

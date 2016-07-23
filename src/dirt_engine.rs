@@ -116,4 +116,8 @@ impl DirtEngine {
     pub fn default_cc(&self) -> CallingConvention {
         CallingConvention::SystemV
     }
+
+    pub fn emu(&self) -> &EmuEngine {
+        &self.emu
+    }
 }

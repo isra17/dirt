@@ -1,3 +1,7 @@
+function bool(i)
+  return i & 0xff
+end
+
 function i32(i)
   local n = i & 0xffffffff
   if (n & 0x80000000) == 0 then

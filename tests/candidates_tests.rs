@@ -4,6 +4,7 @@ mod bin_file;
 
 use dirt::{emu, rules};
 use dirt::dirt_engine::{DirtEngine, TargetInfo};
+use std::env;
 use std::path::Path;
 
 struct Candidate(String, u64);
@@ -54,11 +55,19 @@ fn tests_all_candidates() {
 
         // Iterate through all test_ symbols and run the tested function
         // against the DIRT engine.
-        let results: Vec<bool> = tests_iter.map(|Candidate(fn_name, fva)| {
+        let tests_iter: Vec<Candidate> = match env::var("FILTER") {
+            Ok(name) => {
+                tests_iter.filter(|&Candidate(ref fn_name, _)| fn_name == &name)
+                    .collect()
+            }
+            _ => tests_iter.collect(),
+        };
+        let results: Vec<bool> = tests_iter.iter()
+            .map(|&Candidate(ref fn_name, fva)| {
                 let cc = dirt.default_cc();
                 match dirt.identify_function(&TargetInfo { fva: fva, cc: cc }) {
                     Ok(Some(func_info)) => {
-                        if func_info.name == fn_name {
+                        if &func_info.name == fn_name {
                             println!("{}: Ok!", fn_name);
                             return true;
                         } else {

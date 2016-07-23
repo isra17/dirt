@@ -3,6 +3,7 @@ use emu::datatypes::{BufData, ByteData, CompositeData, DataType, IntegerData,
                      StringData, ThisOffsetData};
 use emu::emu_engine::EmuEffects;
 use lua;
+use std::env;
 use std::path::Path;
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
@@ -107,7 +108,7 @@ impl Rule for LuaRule {
         *lua_effects = None;
 
         if r.is_err() {
-            // println!("{:?}", pop_error(&mut lua));
+            println!("{:?}", pop_error(&mut lua));
             return false;
         }
 
@@ -278,13 +279,19 @@ impl LuaRules {
     }
 
     pub fn candidates(&self) -> &HashMap<String, Vec<LuaRule>> {
-        return &self.candidates_rules;
+        &self.candidates_rules
     }
 
     fn on_rule(&mut self, lua: &mut ::lua::State) -> i32 {
         let name = lua.to_str(1)
             .unwrap()
             .to_owned();
+        if let Ok(filter) = env::var("FILTER") {
+            if filter != name {
+                return 0;
+            }
+        }
+
         lua.pop(1);
         let top = lua.get_top();
         let mut args: Vec<Rc<DataType>> = Vec::new();

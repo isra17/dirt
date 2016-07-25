@@ -5,7 +5,6 @@ authors = ["isra17 <isra017@gmail.com>"]
 
 [[bin]]
 name = "dirt"
-path = "src/main.rs"
 
 [lib]
 doctest = false

@@ -12,8 +12,8 @@ doctest = false
 [dependencies]
 byteorder = "0.5.3"
 capstone = { git = "https://github.com/richo/capstone-rs.git", rev = "d3cf5768ecc2b38e07f97b0aa95022cef1b6b5c7" }
-elf = { git = "https://github.com/philipc/rust-elf.git", rev = "d957556a49b8dc06ff206ba2b2c2a040f040d782" }
-unicorn = { git = "https://github.com/isra17/unicorn-rs.git", rev = "e3972f1eeb92d6ca4446180730639835654cf919" }
+elf = { git = "https://github.com/cole14/rust-elf.git", rev = "8a31cdbff5a5ac053164f5f2d6056618bf642c5f" }
+unicorn = "0.3"
 lua = { git = "https://github.com/jcmoyer/rust-lua53", rev = "a735b6103208d0a4cfc410dd5b32e96786de4ca2" }
 rand = "0.3"
 pbr = "0.2.1"

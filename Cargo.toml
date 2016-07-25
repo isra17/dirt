@@ -3,6 +3,10 @@ name = "dirt"
 version = "0.1.1"
 authors = ["isra17 <isra017@gmail.com>"]
 
+[[bin]]
+name = "dirt"
+path = "src/main.rs"
+
 [lib]
 doctest = false
 
@@ -13,3 +17,4 @@ elf = { git = "https://github.com/philipc/rust-elf.git", rev = "d957556a49b8dc06
 unicorn = { git = "https://github.com/isra17/unicorn-rs.git", rev = "e3972f1eeb92d6ca4446180730639835654cf919" }
 lua = { git = "https://github.com/jcmoyer/rust-lua53", rev = "a735b6103208d0a4cfc410dd5b32e96786de4ca2" }
 rand = "0.3"
+pbr = "0.2.1"

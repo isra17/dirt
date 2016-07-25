@@ -1,8 +1,7 @@
 extern crate dirt;
 
-mod bin_file;
-
 use dirt::{emu, rules};
+use dirt::bin::bin_file;
 use dirt::dirt_engine::{DirtEngine, TargetInfo};
 use std::env;
 use std::path::Path;

@@ -256,17 +256,12 @@ impl LinuxKernel {
                 }
             }
             n if n == Syscall::Writev as u64 => {
-                // println!("writev({}, 0x{:x}, {})", argv[0], argv[1],
-                // argv[2]);
-                for n in 0..argv[2] {
-                    let addr = read_usize(engine, argv[1] + 0x10 * n)
-                        .expect("addr");
-                    let size = read_usize(engine, argv[1] + 8 + 0x10 * n)
-                        .expect("size");
-                    let data = engine.mem_read(addr, size as usize)
-                        .expect("data");
+                /*for n in 0..argv[2] {
+                    let addr = read_usize(engine, argv[1] + 0x10 * n);
+                    let size = read_usize(engine, argv[1] + 8 + 0x10 * n);
+                    let data = engine.mem_read(addr, size as usize);
                     // println!("{:?} > 2", String::from_utf8_lossy(&data));
-                }
+                }*/
                 0xffffffffffffffff
             }
             n if n == Syscall::Uname as u64 => {

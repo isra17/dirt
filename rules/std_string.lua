@@ -131,11 +131,11 @@ Dirt.rule("std::string::string(n,c)",
           end)
 
 Dirt.rule("std::string::size()",
-          StdString.new("aaaaaaaaaaaaaaaa", 0x20),
+          StdString.new("aaaaaaaaaaaaaaaa", 0x20), 0, 0,
           function(s) return s:return_value() == 0x10 end)
 
 Dirt.rule("std::string::size()",
-          StdString.new("", 0x20),
+          StdString.new("", 0x20), 0, 0,
           function(s) return s:return_value() == 0 end)
 
 Dirt.rule("std::string::resize(n)",
@@ -162,6 +162,10 @@ Dirt.rule("std::string::resize(n, c)",
 Dirt.rule("std::string::capacity()",
           StdString.new("aaaaaaaaaaaaaaaa", 0x20),
           function(s) return s:return_value() == 0x20 end)
+
+Dirt.rule("std::string::capacity()",
+          StdString.new("aaaa"),
+          function(s) return s:return_value() == 0xf end)
 
 Dirt.rule("std::string::reserve(n)",
           StdString.new("aaaaaaaa"),

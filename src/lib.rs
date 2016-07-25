@@ -10,3 +10,4 @@ pub mod dirt_engine;
 pub mod emu;
 pub mod rules;
 pub mod utils;
+pub mod bin;

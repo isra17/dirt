@@ -15,6 +15,7 @@ pub struct Symbol {
 
 pub trait BinFile {
     fn objects(&self) -> Vec<Symbol>;
+    fn functions(&self) -> Vec<Symbol>;
     fn read_str(&self, addr: u64) -> Result<String, FromUtf8Error>;
     fn get_symbol(&self, name: &str) -> Option<Symbol>;
 }
@@ -37,6 +38,19 @@ impl BinFile for ElfFile {
         let symtab = self.elf.get_section(".symtab").unwrap();
         let symbols = self.elf.get_symbols(symtab).unwrap().into_iter();
         symbols.filter(|s| s.symtype == elf::types::STT_OBJECT)
+            .map(|s| {
+                Symbol {
+                    name: s.name.clone(),
+                    value: s.value,
+                }
+            })
+            .collect()
+    }
+
+    fn functions(&self) -> Vec<Symbol> {
+        let symtab = self.elf.get_section(".symtab").unwrap();
+        let symbols = self.elf.get_symbols(symtab).unwrap().into_iter();
+        symbols.filter(|s| s.symtype == elf::types::STT_FUNC)
             .map(|s| {
                 Symbol {
                     name: s.name.clone(),

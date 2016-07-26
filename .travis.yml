@@ -1,4 +1,5 @@
 language: rust
+compiler: clang
 rust: stable
 sudo: required
 cache:

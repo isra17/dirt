@@ -10,6 +10,3 @@ before_install:
   - sudo apt-get install clang
   - ./travis/unicorn.sh
   - ./travis/capstone.sh
-  - ls -l unicorn
-  - ls -l capstone
-  - LD_LIBRARY_PATH=$PWD/unicorn/:$PWD/capstone/:$LD_LIBRARY_PATH

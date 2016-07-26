@@ -12,7 +12,7 @@ use std::path::Path;
 use std::env;
 
 pub fn main() {
-    let target_opt = env::args().nth(2);
+    let target_opt = env::args().nth(1);
     if target_opt.is_none() {
         println!("Usage: dirt TARGET");
         return;

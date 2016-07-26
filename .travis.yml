@@ -1,10 +1,11 @@
 language: rust
 rust: stable
+sudo: false
+compiler: gcc
 addons:
   apt:
     packages:
       - libglib2.0-dev
-      - gcc
 before_install:
   - ./travis/install_unicorn.sh
 

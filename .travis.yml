@@ -10,6 +10,3 @@ before_install:
   - sudo apt-get install clang gcc
   - ./travis/unicorn.sh
   - ./travis/capstone.sh
-
-before_script:
-  - make -C tests/candidates

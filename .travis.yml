@@ -1,6 +1,6 @@
 language: rust
 rust: stable
-sudo: required
+sudo: false
 before_install:
   - ./travis/install_unicorn.sh
 

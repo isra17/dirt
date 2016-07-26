@@ -1,9 +1,8 @@
 language: rust
 rust: stable
-sudo: false
+sudo: required
 cache:
   directories:
     - unicorn
 before_install:
   - ./travis/install_unicorn.sh
-  - echo $LD_LIBRARY_PATH

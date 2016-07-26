@@ -2,11 +2,9 @@ language: rust
 rust: stable
 addons:
   apt:
-    sources:
-      - lucid
     packages:
       - libglib2.0-dev
-      - libcapstone-dev
+      - gcc
 before_install:
   - ./travis/install_unicorn.sh
 

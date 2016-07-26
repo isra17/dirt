@@ -1,5 +1,4 @@
 language: rust
-compiler: clang
 rust: stable
 sudo: required
 cache:
@@ -7,6 +6,7 @@ cache:
     - unicorn
     - capstone
 before_install:
+  - sudo apt-get install clang
   - ./travis/unicorn.sh
   - ./travis/capstone.sh
   - ls -l unicorn

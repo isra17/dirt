@@ -5,4 +5,5 @@ cache:
   directories:
     - unicorn
 before_install:
-  - ./travis/install_unicorn.sh
+  - ./travis/unicorn.sh
+  - ./travis/capstone.sh

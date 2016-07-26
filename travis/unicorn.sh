@@ -5,3 +5,4 @@ if [ ! -d "unicorn" ]; then
 fi
 cd unicorn
 UNICORN_ARCHS="x86" ./make.sh clang install
+sudo ./make.sh install

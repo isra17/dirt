@@ -1,6 +1,6 @@
 language: rust
 rust: stable
-sudo: false
+sudo: required
 cache:
   directories:
     - unicorn

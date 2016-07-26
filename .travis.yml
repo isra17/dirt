@@ -4,6 +4,7 @@ addons:
   apt:
     packages:
       - libglib2.0-dev
-      - libcapstone2
-install:
+before_install:
+  - sudo apt-get install libcapstone-dev
   - ./travis/install_unicorn.sh
+

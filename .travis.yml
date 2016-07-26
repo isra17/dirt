@@ -8,4 +8,6 @@ cache:
 before_install:
   - ./travis/unicorn.sh
   - ./travis/capstone.sh
+  - ls -l unicorn
+  - ls -l capstone
   - LD_LIBRARY_PATH=$PWD/unicorn/:$PWD/capstone/:$LD_LIBRARY_PATH

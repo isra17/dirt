@@ -4,6 +4,7 @@ sudo: false
 cache:
   directories:
     - unicorn
+    - capstone
 before_install:
   - ./travis/unicorn.sh
   - ./travis/capstone.sh

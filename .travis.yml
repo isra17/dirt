@@ -1,2 +1,9 @@
 language: rust
 rust: stable
+addons:
+  apt:
+    packages:
+      - libglib2.0-dev
+      - libcapstone2
+install:
+  - ./travis/install_unicorn.sh

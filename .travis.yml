@@ -1,9 +1,10 @@
 language: rust
 rust: stable
-sudo: required
+sudo: false
 cache:
   directories:
     - unicorn
 before_install:
   - ./travis/unicorn.sh
   - ./travis/capstone.sh
+  - LD_LIBRARY_PATH=$PWD/unicorn/:$PWD/capstone/:$LD_LIBRARY_PATH
